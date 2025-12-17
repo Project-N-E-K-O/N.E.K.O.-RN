@@ -1,0 +1,6 @@
+[submodule "packages/react-native-pcm-stream"]
+	path = packages/react-native-pcm-stream
+	url = https://github.com/noahzaozao/react-native-pcm-stream.git
+[submodule "packages/react-native-live2d"]
+	path = packages/react-native-live2d
+	url = https://github.com/noahzaozao/react-native-live2d.git
