@@ -19,6 +19,7 @@ export default function RootLayout() {
         {/* <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} /> */}
         <Stack.Screen name="audio-test" options={{ title: '音频测试' }} />
         <Stack.Screen name="qr-scanner" options={{ title: '扫码（Dev）' }} />
+        <Stack.Screen name="request-lab" options={{ title: 'Request/组件实验室' }} />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>
