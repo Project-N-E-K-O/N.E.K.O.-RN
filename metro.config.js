@@ -20,4 +20,15 @@ config.resolver.nodeModulesPaths = [
   path.resolve(workspaceRoot, 'node_modules'),
 ];
 
+// 关键：在 workspace 依赖未被正确链接/或尚未 build 时，仍能让 Metro 解析到本地 packages
+// 这样 `import 'react-native-live2d'` 会直接指向 `packages/react-native-live2d`（同理 pcm-stream）
+config.resolver.extraNodeModules = {
+  ...(config.resolver.extraNodeModules || {}),
+  'react-native-live2d': path.resolve(projectRoot, 'packages/react-native-live2d'),
+  'react-native-pcm-stream': path.resolve(projectRoot, 'packages/react-native-pcm-stream'),
+  '@project_neko/common': path.resolve(projectRoot, 'packages/project-neko-common'),
+  '@project_neko/request': path.resolve(projectRoot, 'packages/project-neko-request'),
+  '@project_neko/components': path.resolve(projectRoot, 'packages/project-neko-components'),
+};
+
 module.exports = config;

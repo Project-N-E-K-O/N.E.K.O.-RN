@@ -2,11 +2,87 @@ import { ThemedView } from '@/components/themed-view';
 import { AudioService } from '@/services/AudioService';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
+type DevConnectionConfig = {
+	host: string;
+	port: number;
+	characterName: string;
+};
+
+function parseDevConnectionConfig(raw: string): Partial<DevConnectionConfig> | null {
+	const text = raw.trim();
+	if (!text) return null;
+
+	// 1) JSON: {"host":"x","port":48911,"characterName":"test"}
+	try {
+		const obj = JSON.parse(text) as any;
+		if (obj && typeof obj === 'object') {
+			const out: Partial<DevConnectionConfig> = {};
+			if (typeof obj.host === 'string' && obj.host.trim()) out.host = obj.host.trim();
+			if (typeof obj.port === 'number' && Number.isFinite(obj.port)) out.port = obj.port;
+			if (typeof obj.characterName === 'string' && obj.characterName.trim()) out.characterName = obj.characterName.trim();
+			if (typeof obj.name === 'string' && obj.name.trim()) out.characterName = obj.name.trim();
+			if (Object.keys(out).length > 0) return out;
+		}
+	} catch { }
+
+	// 2) URL-like: nekorn://dev?host=...&port=...&name=...
+	try {
+		const url = new URL(text);
+		const host = (url.searchParams.get('host') || '').trim();
+		const portStr = (url.searchParams.get('port') || '').trim();
+		const name = (url.searchParams.get('characterName') || url.searchParams.get('name') || '').trim();
+		const out: Partial<DevConnectionConfig> = {};
+		if (host) out.host = host;
+		if (portStr && /^\d+$/.test(portStr)) out.port = Number(portStr);
+		if (name) out.characterName = name;
+		if (Object.keys(out).length > 0) return out;
+
+		// 允许直接从 URL 的 host/port 取值（如 http://1.2.3.4:48911）
+		if (url.hostname) out.host = url.hostname;
+		if (url.port && /^\d+$/.test(url.port)) out.port = Number(url.port);
+		if (Object.keys(out).length > 0) return out;
+	} catch { }
+
+	// 3) host:port 或 host:port?name=xxx
+	// 允许 ws:// / http:// 前缀在这里被粗略剥离
+	const stripped = text.replace(/^(ws|wss|http|https):\/\//, '');
+	const parts = stripped.split('?');
+	const hostPort = (parts[0] || '').trim();
+	const query = (parts[1] || '').trim();
+	const m = hostPort.match(/^([a-zA-Z0-9.\-]+)(?::(\d+))?$/);
+	if (m) {
+		const out: Partial<DevConnectionConfig> = {};
+		if (m[1]) out.host = m[1];
+		if (m[2]) out.port = Number(m[2]);
+		if (query) {
+			try {
+				const q = new URLSearchParams(query);
+				const name = (q.get('characterName') || q.get('name') || '').trim();
+				if (name) out.characterName = name;
+			} catch { }
+		}
+		if (Object.keys(out).length > 0) return out;
+	}
+
+	return null;
+}
 
 export default function ExploreScreen() {
+	const router = useRouter();
+	const params = useLocalSearchParams<{ qr?: string }>();
+
 	const audioServiceRef = useRef<AudioService | null>(null);
 	const lastQueueClearAtMsRef = useRef<number>(0);
+	const lastAppliedQrRef = useRef<string | null>(null);
+
+	const [connectionConfig, setConnectionConfig] = useState<DevConnectionConfig>({
+		host: '192.168.88.38',
+		port: 48911,
+		characterName: 'test',
+	});
+
 	const [isSessionActive, setIsSessionActive] = useState<boolean>(false);
 	const [isConnected, setIsConnected] = useState<boolean>(false);
 	const [messages, setMessages] = useState<Array<{ id: string; text: string; sender: string; timestamp: string }>>([]);
@@ -14,17 +90,40 @@ export default function ExploreScreen() {
 	const [isPlaying, setIsPlaying] = useState<boolean>(false);
 	const [focusModeState, setFocusModeState] = useState<boolean>(false);
 
-	const port = 48911;
-	const host = '192.168.88.38';
-	const lanlanName = 'test';
+	// 扫码回填（只在参数变化时处理一次，避免重复应用）
+	useEffect(() => {
+		const qrParam = typeof params.qr === 'string' ? params.qr : undefined;
+		if (!qrParam) return;
+		if (lastAppliedQrRef.current === qrParam) return;
+		lastAppliedQrRef.current = qrParam;
+
+		let decoded = qrParam;
+		try {
+			decoded = decodeURIComponent(qrParam);
+		} catch { }
+
+		const parsed = parseDevConnectionConfig(decoded);
+		if (!parsed) {
+			Alert.alert('二维码内容不可用', decoded.slice(0, 256));
+			return;
+		}
+
+		setConnectionConfig(prev => ({
+			host: parsed.host ?? prev.host,
+			port: parsed.port ?? prev.port,
+			characterName: parsed.characterName ?? prev.characterName,
+		}));
+	}, [params.qr]);
 
 	useEffect(() => {
 		console.log('ExploreScreen 组件初始化');
 
+		// 切换配置时重建连接（避免写死 IP 导致 dev 调试困难）
+		audioServiceRef.current?.destroy();
 		audioServiceRef.current = new AudioService({
-			host,
-			port,
-			characterName: lanlanName,
+			host: connectionConfig.host,
+			port: connectionConfig.port,
+			characterName: connectionConfig.characterName,
 			onError: (error) => {
 				console.error('AudioService错误:', error);
 				Alert.alert('音频服务错误', error.message || '未知错误');
@@ -52,7 +151,7 @@ export default function ExploreScreen() {
 		return () => {
 			audioServiceRef.current?.destroy();
 		};
-	}, []);
+	}, [connectionConfig.characterName, connectionConfig.host, connectionConfig.port]);
 
 	// 统一处理 WebSocket 消息
 	const handleWsMessage = (event: MessageEvent) => {
@@ -226,6 +325,9 @@ export default function ExploreScreen() {
 			{/* 状态显示 */}
 			<View style={styles.statusContainer}>
 				<Text style={styles.statusText}>
+					连接配置: {connectionConfig.host}:{connectionConfig.port} / {connectionConfig.characterName}
+				</Text>
+				<Text style={styles.statusText}>
 					AI通话状态: {isSessionActive ? '通话中' : '未通话'}
 				</Text>
 				<Text style={styles.statusText}>
@@ -246,6 +348,16 @@ export default function ExploreScreen() {
 					onPress={isSessionActive ? endAICall : startAICall}
 					color={isSessionActive ? "#ff4444" : "#4CAF50"}
 				/>
+				{__DEV__ && (
+					<View style={{ height: 12 }} />
+				)}
+				{__DEV__ && (
+					<Button
+						title="扫码配置（Dev）"
+						onPress={() => router.push({ pathname: '/qr-scanner', params: { returnTo: '/explore' } })}
+						color="#2f6fed"
+					/>
+				)}
 			</View>
 
 			{/* 消息输出区域 */}

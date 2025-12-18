@@ -1,12 +1,13 @@
 import { StyleSheet, Text, type TextProps } from 'react-native';
+import type { PropsWithChildren } from 'react';
 
 import { useThemeColor } from '@/hooks/use-theme-color';
 
-export type ThemedTextProps = TextProps & {
+export type ThemedTextProps = PropsWithChildren<TextProps & {
   lightColor?: string;
   darkColor?: string;
   type?: 'default' | 'title' | 'defaultSemiBold' | 'subtitle' | 'link';
-};
+}>;
 
 export function ThemedText({
   style,

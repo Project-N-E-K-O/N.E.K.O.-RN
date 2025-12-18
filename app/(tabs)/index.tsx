@@ -59,7 +59,13 @@ export default function HomeScreen() {
         </Link>
       </ThemedView>
       <ThemedView style={styles.stepContainer}>
-      <Link href="/rnlive2d">
+        <Link href="/qr-scanner">
+          <ThemedText type="subtitle">扫码配置（Dev）</ThemedText>
+        </Link>
+        <ThemedText>
+          扫码配置（Dev）
+        </ThemedText>
+        <Link href="/rnlive2d">
           <ThemedText type="subtitle"> Live2D测试页面 (react-native-live2d)</ThemedText>
         </Link>
         <ThemedText>

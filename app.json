@@ -24,7 +24,8 @@
             }
           }
         },
-        "NSMicrophoneUsageDescription": "需要使用麦克风进行语音输入"
+        "NSMicrophoneUsageDescription": "需要使用麦克风进行语音输入",
+        "NSCameraUsageDescription": "需要使用相机扫描二维码进行开发配置"
       },
       "bundleIdentifier": "com.neko.app"
     },
@@ -40,6 +41,7 @@
       "permissions": [
         "INTERNET",
         "ACCESS_NETWORK_STATE",
+        "CAMERA",
         "RECORD_AUDIO",
         "MODIFY_AUDIO_SETTINGS"
       ],
@@ -52,6 +54,12 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "允许 N.E.K.O.-RN 使用相机扫描二维码进行开发配置"
+        }
+      ],
       [
         "expo-splash-screen",
         {
