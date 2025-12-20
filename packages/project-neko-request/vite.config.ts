@@ -31,7 +31,7 @@ export default defineConfig(({ mode }) => {
       },
       // 输出到仓库根的 static/bundles
       outDir: path.resolve(__dirname, "../../static/bundles"),
-      emptyOutDir: true,
+      emptyOutDir: false,
       sourcemap: mode === 'production' ? false : true, // 开发模式生成 sourcemap，生产模式不生成
       // 使用 esbuild 压缩（生产模式压缩，开发模式不压缩，确保保留 console.log）
       minify: mode === 'production' ? "esbuild" : false,
