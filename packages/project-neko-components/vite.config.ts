@@ -7,7 +7,6 @@ export default defineConfig(({ mode }) => {
   return {
     define: {
       "process.env.NODE_ENV": JSON.stringify(isProduction ? "production" : "development"),
-      process: JSON.stringify({ env: { NODE_ENV: isProduction ? "production" : "development" } })
     },
     // 组件库 UMD 不使用 React 插件转换，改用经典 JSX（esbuild 配置）
     plugins: [],
@@ -20,8 +19,8 @@ export default defineConfig(({ mode }) => {
         fileName: (format) => (format === "es" ? "components.es.js" : "components.js")
       },
       // 输出到仓库根的 static/bundles
-      outDir: path.resolve(__dirname, "../../../static/bundles"),
-      emptyOutDir: false,
+      outDir: path.resolve(__dirname, "../../static/bundles"),
+      emptyOutDir: true,
       cssCodeSplit: false,
       sourcemap: isProduction ? false : true, // 开发模式生成 sourcemap，生产模式不生成
       minify: isProduction ? "esbuild" : false, // 生产模式压缩，开发模式不压缩

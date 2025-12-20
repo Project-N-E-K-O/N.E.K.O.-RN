@@ -17,7 +17,8 @@
   "scripts": {
     "build": "vite build --config vite.config.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prepublishOnly": "npm run build && node -e \"console.error('\\n[@project_neko/request] 这是内部 workspace 包（入口刻意指向 TS 源码），不应发布到 npm。\\n如需发布，请先实现 dist 编译产物并更新 main/types/exports 指向 dist，再移除 private/prepublishOnly 防护。\\n'); process.exit(1)\""
   },
   "keywords": [
     "axios",

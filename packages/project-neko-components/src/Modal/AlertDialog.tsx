@@ -1,4 +1,3 @@
-import React from "react";
 import { BaseModal } from "./BaseModal";
 import type { BaseModalProps } from "./BaseModal";
 
@@ -41,9 +40,8 @@ export function AlertDialog({
   const getOkText = () => {
     if (okText) return okText;
     try {
-      return window.t && typeof window.t === "function"
-        ? window.t("common.ok")
-        : "确定";
+      const t = typeof window !== "undefined" ? (window as any).t : undefined;
+      return typeof t === "function" ? String(t("common.ok")) : "确定";
     } catch (e) {
       return "确定";
     }

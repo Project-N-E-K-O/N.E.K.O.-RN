@@ -14,8 +14,8 @@ export default defineConfig(({ mode }) => {
         fileName: (format) => (format === "es" ? "common.es.js" : "common.js")
       },
       // 输出到仓库根的 static/bundles
-      outDir: path.resolve(__dirname, "../../../static/bundles"),
-      emptyOutDir: false,
+      outDir: path.resolve(__dirname, "../../static/bundles"),
+      emptyOutDir: true,
       sourcemap: isProduction ? false : true, // 开发模式生成 sourcemap，生产模式不生成
       minify: isProduction ? "esbuild" : false, // 生产模式压缩，开发模式不压缩
       rollupOptions: {
