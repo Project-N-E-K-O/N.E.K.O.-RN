@@ -73,6 +73,13 @@ export default function HomeScreen() {
           测试 `@project_neko/request`（token/刷新/队列）以及基础 UI 组件。
         </ThemedText>
 
+        <Link href="/webapp">
+          <ThemedText type="subtitle">🧩 WebApp 页面（对齐 frontend/src/web/App.tsx）</ThemedText>
+        </Link>
+        <ThemedText>
+          复刻 Web 端 App.tsx：语言切换、请求 page_config、StatusToast、Modal（Alert/Confirm/Prompt）。
+        </ThemedText>
+
         <Link href="/rnlive2d">
           <ThemedText type="subtitle"> Live2D测试页面 (react-native-live2d)</ThemedText>
         </Link>

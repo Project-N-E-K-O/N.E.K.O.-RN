@@ -20,6 +20,7 @@ export default function RootLayout() {
         <Stack.Screen name="audio-test" options={{ title: '音频测试' }} />
         <Stack.Screen name="qr-scanner" options={{ title: '扫码（Dev）' }} />
         <Stack.Screen name="request-lab" options={{ title: 'Request/组件实验室' }} />
+        <Stack.Screen name="webapp" options={{ title: 'WebApp（对齐 frontend/src/web/App.tsx）' }} />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>

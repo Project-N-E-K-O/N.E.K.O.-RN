@@ -10,6 +10,7 @@ export default defineConfig(({ mode }) => {
   return {
     define: {
       "process.env.NODE_ENV": JSON.stringify(isProduction ? "production" : "development"),
+      process: JSON.stringify({ env: { NODE_ENV: isProduction ? "production" : "development" } })
     },
     // 组件库 UMD 不使用 React 插件转换，改用经典 JSX（esbuild 配置）
     plugins: [],

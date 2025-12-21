@@ -1,5 +1,5 @@
+import React from "react";
 import { useState, useEffect, useRef } from "react";
-import type { ChangeEvent, KeyboardEvent } from "react";
 import { BaseModal } from "./BaseModal";
 import type { BaseModalProps } from "./BaseModal";
 
@@ -73,7 +73,7 @@ export function PromptDialog({
   };
 
   // 处理 Enter 键（Esc 交由 BaseModal 统一处理）
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       handleConfirm();
     }
@@ -107,7 +107,7 @@ export function PromptDialog({
           type="text"
           className="modal-input"
           value={inputValue}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setInputValue(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
         />

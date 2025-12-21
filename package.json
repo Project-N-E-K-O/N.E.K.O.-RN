@@ -10,7 +10,9 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "clean": "react-native-clean-project",
-    "clean:auto": "react-native-clean-project-auto"
+    "clean:auto": "react-native-clean-project-auto",
+    "sync:neko-packages": "node scripts/sync-neko-packages.js",
+    "sync:neko-packages:dry": "node scripts/sync-neko-packages.js --dry-run --verbose"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",

@@ -1,3 +1,4 @@
+import React from "react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import "./Button.css";
 
