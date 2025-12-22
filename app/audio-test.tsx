@@ -1,4 +1,4 @@
-import { AndroidPCMStreamService, AUDIO_CONFIG } from '@/services/android.pcmstream.native';
+import { AndroidPCMStreamService, AUDIO_CONFIG } from '@/services/android.pcmstream';
 import { WSService } from '@/services/wsService';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';

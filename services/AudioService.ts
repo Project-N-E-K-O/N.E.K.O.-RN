@@ -1,5 +1,5 @@
 import { Alert } from 'react-native';
-import { AndroidPCMStreamService } from './android.pcmstream.native';
+import { AndroidPCMStreamService } from './android.pcmstream';
 import { WSService } from './wsService';
 
 /**
