@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useDevConnectionConfig } from '@/hooks/useDevConnectionConfig';
 
 type ReturnToParam = string | undefined;
 type AllowedReturnTo =
@@ -18,6 +19,7 @@ export default function QrScannerScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ returnTo?: string }>();
   const returnTo: ReturnToParam = typeof params.returnTo === 'string' ? params.returnTo : undefined;
+  const devConfig = useDevConnectionConfig();
 
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
@@ -40,7 +42,7 @@ export default function QrScannerScreen() {
         return;
       }
 
-      // 回传到上一页：通过 query param 的方式传递，上一页自行解析并应用
+      // 回传到上一页：同时写入“全局连接配置”（供整个项目读取）
       const target: AllowedReturnTo =
         returnTo === '/explore' ||
         returnTo === '/audio-test' ||
@@ -52,12 +54,23 @@ export default function QrScannerScreen() {
         returnTo === '/main'
           ? returnTo
           : '/explore';
-      router.replace({
-        pathname: target,
-        params: { qr: encodeURIComponent(raw) },
-      });
+
+      (async () => {
+        const applied = await devConfig.applyQrRaw(raw);
+        if (!applied.ok) {
+          Alert.alert('二维码内容不可用', `${applied.error}\n\n内容：${raw.slice(0, 256)}`);
+          setScanned(false);
+          return;
+        }
+
+        router.replace({
+          pathname: target,
+          // 兼容旧逻辑：仍传 qr 参数；但主逻辑已写入全局配置
+          params: { qr: encodeURIComponent(raw) },
+        });
+      })();
     },
-    [router, returnTo, scanned]
+    [devConfig, router, returnTo, scanned]
   );
 
   if (!permission) {

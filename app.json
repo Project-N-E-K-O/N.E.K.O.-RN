@@ -15,14 +15,7 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSAppTransportSecurity": {
-          "NSAllowsArbitraryLoads": true,
-          "NSExceptionDomains": {
-            "192.168.88.38": {
-              "NSExceptionAllowsInsecureHTTPLoads": true,
-              "NSExceptionMinimumTLSVersion": "1.0",
-              "NSIncludesSubdomains": true
-            }
-          }
+          "NSAllowsArbitraryLoads": true
         },
         "NSMicrophoneUsageDescription": "需要使用麦克风进行语音输入",
         "NSCameraUsageDescription": "需要使用相机扫描二维码进行开发配置"

@@ -1,5 +1,6 @@
 import { useAudio } from '@/hooks/useAudio';
 import { useChatMessages } from '@/hooks/useChatMessages';
+import { useDevConnectionConfig } from '@/hooks/useDevConnectionConfig';
 import { useLipSync } from '@/hooks/useLipSync';
 import { useLive2D } from '@/hooks/useLive2D';
 import { mainManager } from '@/utils/MainManager';
@@ -15,16 +16,16 @@ interface MainUIScreenProps { }
 const MainUIScreen: React.FC<MainUIScreenProps> = () => {
 
   const [isPageFocused, setIsPageFocused] = useState(true);
+  const { config } = useDevConnectionConfig();
 
   const chat = useChatMessages({
     maxMessages: 100,
   });
 
   const audio = useAudio({
-    host: '192.168.88.38',
-    // host: '192.168.50.66',
-    port: 48911,
-    characterName: 'test',
+    host: config.host,
+    port: config.port,
+    characterName: config.characterName,
     onMessage: async (event) => {
       // 处理二进制音频数据
       if (event.data instanceof Blob) {
@@ -65,8 +66,7 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
 
   const live2d = useLive2D({
     modelName: 'mao_pro',
-    backendHost: '192.168.88.38',
-    // backendHost: '192.168.50.66',
+    backendHost: config.host,
     backendPort: 8081,
     autoLoad: false,
   });

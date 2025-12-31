@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Animated, Easing, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { Collapsible } from '@/components/ui/collapsible';
@@ -7,6 +7,8 @@ import { ThemedView } from '@/components/themed-view';
 
 import { createRequestClient } from '@project_neko/request';
 import type { TokenRefreshFn, TokenStorage } from '@project_neko/request';
+import { useDevConnectionConfig } from '@/hooks/useDevConnectionConfig';
+import { buildHttpBaseURL, DEFAULT_DEV_CONNECTION_CONFIG } from '@/utils/devConnectionConfig';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
@@ -120,8 +122,20 @@ function useStatusToast(): { show: StatusToastShow; element: React.ReactNode } {
 export default function RequestLabScreen() {
   const storageRef = useRef<MemoryTokenStorage>(new MemoryTokenStorage());
   const toast = useStatusToast();
+  const { config } = useDevConnectionConfig();
 
-  const [baseURL, setBaseURL] = useState('http://192.168.88.38:48911');
+  const defaultBaseURL = useMemo(() => buildHttpBaseURL(DEFAULT_DEV_CONNECTION_CONFIG), []);
+  const suggestedBaseURL = useMemo(() => buildHttpBaseURL(config), [config.host, config.port]);
+  const [baseURL, setBaseURL] = useState(() => defaultBaseURL);
+
+  // 若用户还没手动改过 baseURL（保持默认），则跟随全局扫码配置自动更新
+  useEffect(() => {
+    setBaseURL((prev) => {
+      const trimmed = (prev ?? '').trim();
+      if (!trimmed || trimmed === defaultBaseURL) return suggestedBaseURL;
+      return prev;
+    });
+  }, [defaultBaseURL, suggestedBaseURL]);
 
   const [path, setPath] = useState('/api/config/page_config');
   const [method, setMethod] = useState<HttpMethod>('GET');
