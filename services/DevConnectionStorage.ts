@@ -34,13 +34,25 @@ export async function getStoredDevConnectionConfig(): Promise<DevConnectionConfi
 export async function setStoredDevConnectionConfig(
   next: Partial<DevConnectionConfig> | DevConnectionConfig
 ): Promise<DevConnectionConfig> {
-  const current = await getStoredDevConnectionConfig();
-  const merged: DevConnectionConfig = { ...current, ...sanitizePartial(next) };
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-  return merged;
+  let current: DevConnectionConfig = DEFAULT_DEV_CONNECTION_CONFIG;
+  try {
+    current = await getStoredDevConnectionConfig();
+    const merged: DevConnectionConfig = { ...current, ...sanitizePartial(next) };
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+    return merged;
+  } catch (error) {
+    console.error('[DevConnectionStorage] Failed to persist dev connection config', error);
+    // Fallback: return the last known-good config so callers still get a DevConnectionConfig.
+    return current;
+  }
 }
 
 export async function clearStoredDevConnectionConfig(): Promise<void> {
-  await AsyncStorage.removeItem(STORAGE_KEY);
+  try {
+    await AsyncStorage.removeItem(STORAGE_KEY);
+  } catch (error) {
+    console.error(`[DevConnectionStorage] Failed to clear dev connection config for key "${STORAGE_KEY}"`, error);
+    // Swallow error: callers expect this to resolve to void.
+  }
 }
 
