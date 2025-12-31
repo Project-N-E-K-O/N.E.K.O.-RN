@@ -1,8 +1,18 @@
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, ImageBackground, Modal as RNModal, Pressable, ScrollView, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
+import {
+  Animated,
+  Easing,
+  ImageBackground,
+  Modal as RNModal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 
 import { createRequestClient } from '@project_neko/request';
 import type { TokenStorage } from '@project_neko/request';
