@@ -1,5 +1,6 @@
-import { AndroidPCMStreamService, AUDIO_CONFIG } from '@/services/android.pcmstream.native';
+import { AndroidPCMStreamService, AUDIO_CONFIG } from '@/services/android.pcmstream';
 import { WSService } from '@/services/wsService';
+import { useDevConnectionConfig } from '@/hooks/useDevConnectionConfig';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -12,14 +13,11 @@ const AudioTest: React.FC<AudioTestProps> = () => {
     const [receivedDataCount, setReceivedDataCount] = useState(0);
     const [messages, setMessages] = useState<Array<{ id: string; text: string; sender: string; timestamp: string }>>([]);
 
+    const { config } = useDevConnectionConfig();
+    
     
     const androidPCMStreamServiceRef = useRef<AndroidPCMStreamService | null>(null);
     const wsServiceRef = useRef<WSService | null>(null);
-
-    // const WS_HOST = '192.168.88.38';
-    const WS_HOST = '192.168.50.66';
-    const WS_PORT = 48911;
-    const WS_CHARACTER_NAME = 'test';
 
     // 初始化音频配置
     const initializeAudio = async () => {
@@ -36,30 +34,7 @@ const AudioTest: React.FC<AudioTestProps> = () => {
     // 初始化WebSocket连接
     const initWebSocket = () => {
         try {
-            wsServiceRef.current = new WSService({
-                host: WS_HOST,
-                port: WS_PORT,
-                characterName: WS_CHARACTER_NAME,
-                onOpen: () => {
-                    setIsConnected(true);
-                    setConnectionStatus('已连接');
-                },
-                onMessage: (event) => {
-                    console.log('收到WebSocket消息:', typeof event.data);
-                    setReceivedDataCount(prev => prev + 1);
-                    onMessage(event);
-                },
-                onError: (error) => {
-                    setConnectionStatus('连接错误');
-                },
-                onClose: (event) => {
-                    setIsConnected(false);
-                    setConnectionStatus('连接已关闭');
-                }
-            });
-            wsServiceRef.current.init();
-
-            const onMessage = async (event: MessageEvent) => {
+            const handleMessage = async (event: MessageEvent) => {
                 console.log('收到WebSocket消息:', typeof event.data);
 
                 // 处理二进制PCM数据
@@ -105,13 +80,6 @@ const AudioTest: React.FC<AudioTestProps> = () => {
                             if (lastGeminiMessage) {
                                 const fullText = lastGeminiMessage.text.replace(/^\[\d{2}:\d{2}:\d{2}\] 🎀 /, '');
                                 console.log('fullText:', fullText);
-                                // setTimeout(async () => {
-                                // const emotionResult = await analyzeEmotion(fullText);
-                                // if (emotionResult && emotionResult.emotion) {
-                                // console.log('消息完成，情感分析结果:', emotionResult);
-                                // applyEmotion(emotionResult.emotion);
-                                // }
-                                // }, 100);
                             }
                         }
                     } catch (e) {
@@ -119,6 +87,28 @@ const AudioTest: React.FC<AudioTestProps> = () => {
                     }
                 }
             };
+
+            wsServiceRef.current = new WSService({
+                host: config.host,
+                port: config.port,
+                characterName: config.characterName,
+                onOpen: () => {
+                    setIsConnected(true);
+                    setConnectionStatus(`已连接 (${config.host}:${config.port}/${config.characterName})`);
+                },
+                onMessage: (event) => {
+                    setReceivedDataCount(prev => prev + 1);
+                    handleMessage(event);
+                },
+                onError: (error) => {
+                    setConnectionStatus('连接错误');
+                },
+                onClose: (event) => {
+                    setIsConnected(false);
+                    setConnectionStatus('连接已关闭');
+                }
+            });
+            wsServiceRef.current.init();
 
         } catch (error) {
             console.error('WebSocket初始化失败:', error);
@@ -218,6 +208,15 @@ const AudioTest: React.FC<AudioTestProps> = () => {
 
     // 组件初始化
     useEffect(() => {
+        // 切换配置时：销毁旧连接并重建（避免写死 IP）
+        androidPCMStreamServiceRef.current?.uninitializeAudio();
+        androidPCMStreamServiceRef.current = null;
+        wsServiceRef.current?.destroy();
+        wsServiceRef.current = null;
+        setIsRecording(false);
+        setIsConnected(false);
+        setConnectionStatus('未连接');
+
         initWebSocket();
         initializeAudio();
 
@@ -227,12 +226,12 @@ const AudioTest: React.FC<AudioTestProps> = () => {
         return () => {
             // 清理音频资源
             androidPCMStreamServiceRef.current?.uninitializeAudio();
-            if (wsServiceRef.current) {
-                wsServiceRef.current.close();
-            }
+            androidPCMStreamServiceRef.current = null;
+            wsServiceRef.current?.destroy();
+            wsServiceRef.current = null;
             setIsRecording(false);
         };
-    }, []);
+    }, [config.characterName, config.host, config.port]);
 
     const audioStats = androidPCMStreamServiceRef.current?.getStats();
 

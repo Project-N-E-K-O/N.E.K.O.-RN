@@ -667,8 +667,28 @@ function init_app() {
 
             // const url = window.AUDIO_PROCESSOR_CODE_URL;
 
-            // const url = 'http://192.168.88.38:48911/static/audio-processor.js';
-            const url = 'http://192.168.50.66:48911/static/audio-processor.js';
+            // 优先从全局/本地存储读取后端地址，避免写死 IP：
+            // - window.NEKO_BACKEND_BASE_URL / window.__NEKO_BACKEND_BASE_URL__
+            // - localStorage["NEKO_BACKEND_BASE_URL"]
+            // 兜底：使用当前页面 hostname + 固定端口（48911）
+            const getBackendBaseURL = () => {
+                try {
+                    const candidates = [
+                        window.NEKO_BACKEND_BASE_URL,
+                        window.__NEKO_BACKEND_BASE_URL__,
+                        typeof localStorage !== 'undefined' ? localStorage.getItem('NEKO_BACKEND_BASE_URL') : null,
+                    ];
+                    for (const c of candidates) {
+                        if (typeof c === 'string' && c.trim()) return c.trim().replace(/\/+$/, '');
+                    }
+                } catch (e) { }
+                try {
+                    return `http://${location.hostname}:48911`;
+                } catch (e) { }
+                return 'http://localhost:48911';
+            };
+
+            const url = `${getBackendBaseURL()}/static/audio-processor.js`;
 
             console.log('==========AudioWorklet addModule url==========', url);
 

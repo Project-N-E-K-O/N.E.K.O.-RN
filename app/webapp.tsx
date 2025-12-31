@@ -1,8 +1,18 @@
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Modal as RNModal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import {
+  Animated,
+  Easing,
+  ImageBackground,
+  Modal as RNModal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 
 import { createRequestClient } from '@project_neko/request';
 import type { TokenStorage } from '@project_neko/request';
@@ -148,9 +158,11 @@ export interface StatusToastHandle {
 }
 
 const StatusToast = forwardRef<StatusToastHandle | null, { staticBaseUrl?: string }>(function StatusToastRN(
-  _props,
+  props,
   ref,
 ) {
+  const { width } = useWindowDimensions();
+  const isNarrow = width <= 600;
   const [message, setMessage] = useState('');
   const [visible, setVisible] = useState(false);
   const opacity = useRef(new Animated.Value(0)).current;
@@ -206,12 +218,35 @@ const StatusToast = forwardRef<StatusToastHandle | null, { staticBaseUrl?: strin
     };
   }, []);
 
+  const bgUri = useMemo(() => {
+    const base = trimTrailingSlash(props.staticBaseUrl || STATIC_BASE);
+    return base ? `${base}/static/icons/toast_background.png` : '';
+  }, [props.staticBaseUrl]);
+
   if (!visible) return null;
   return (
-    <Animated.View style={[styles.toastContainer, { opacity, transform: [{ translateY }] }]}>
-      <ThemedText type="defaultSemiBold" style={styles.toastText}>
-        {message}
-      </ThemedText>
+    <Animated.View
+      style={[
+        styles.toastContainer,
+        isNarrow ? styles.toastContainerNarrow : null,
+        { opacity, transform: [{ translateY }] },
+      ]}
+      pointerEvents="none"
+    >
+      <ImageBackground
+        source={bgUri ? { uri: bgUri } : undefined}
+        resizeMode="stretch"
+        style={styles.toastBg}
+        imageStyle={styles.toastBgImage}
+      >
+        <View style={styles.toastOverlay} />
+        <ThemedText style={styles.toastPaw} pointerEvents="none">
+          🐾
+        </ThemedText>
+        <ThemedText type="defaultSemiBold" style={styles.toastText} pointerEvents="none">
+          {message}
+        </ThemedText>
+      </ImageBackground>
     </Animated.View>
   );
 });
@@ -378,28 +413,36 @@ const Modal = forwardRef<
     <RNModal transparent visible={isOpen} animationType="fade" onRequestClose={handleCancel}>
       <Pressable style={styles.modalOverlay} onPress={closeDialog}>
         <Pressable style={styles.modalDialog} onPress={() => {}}>
-          <ThemedText type="subtitle" style={styles.modalTitle}>
-            {config?.title ?? ''}
-          </ThemedText>
-          <ThemedText type="default" style={styles.modalMessage}>
-            {config?.message ?? ''}
-          </ThemedText>
+          <View style={styles.modalHeader}>
+            <ThemedText type="subtitle" style={styles.modalTitle}>
+              {config?.title ?? ''}
+            </ThemedText>
+          </View>
 
-          {config?.type === 'prompt' && (
-            <TextInput
-              value={promptValue}
-              onChangeText={setPromptValue}
-              placeholder={config.placeholder}
-              style={styles.modalInput}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          )}
+          <View style={styles.modalBody}>
+            <ThemedText type="default" style={styles.modalMessage}>
+              {config?.message ?? ''}
+            </ThemedText>
 
-          <View style={styles.modalActions}>
+            {config?.type === 'prompt' && (
+              <TextInput
+                value={promptValue}
+                onChangeText={setPromptValue}
+                placeholder={config.placeholder}
+                style={styles.modalInput}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            )}
+          </View>
+
+          <View style={styles.modalFooter}>
             {(config?.type === 'confirm' || config?.type === 'prompt') && (
-              <Pressable style={({ pressed }) => [styles.modalBtn, styles.modalBtnSecondary, pressed && styles.btnPressed]} onPress={handleCancel}>
-                <ThemedText type="defaultSemiBold">
+              <Pressable
+                style={({ pressed }) => [styles.modalBtn, styles.modalBtnSecondary, pressed ? styles.modalBtnPressed : null]}
+                onPress={handleCancel}
+              >
+                <ThemedText type="defaultSemiBold" style={styles.modalBtnTextOnSecondary}>
                   {(config as ConfirmConfig | PromptConfig | null)?.cancelText || t('webapp.modal.cancelText') || '取消'}
                 </ThemedText>
               </Pressable>
@@ -408,8 +451,8 @@ const Modal = forwardRef<
             <Pressable
               style={({ pressed }) => [
                 styles.modalBtn,
-                (config?.type === 'confirm' && (config as ConfirmConfig).danger ? styles.modalBtnDanger : styles.modalBtnPrimary),
-                pressed && styles.btnPressed,
+                config?.type === 'confirm' && (config as ConfirmConfig).danger ? styles.modalBtnDanger : styles.modalBtnPrimary,
+                pressed ? styles.modalBtnPressed : null,
               ]}
               onPress={() => {
                 if (config?.type === 'prompt') handleConfirm(promptValue);
@@ -447,7 +490,7 @@ function AppButton({
         variant === 'secondary' && styles.btnSecondary,
         variant === 'success' && styles.btnSuccess,
         variant === 'danger' && styles.btnDanger,
-        pressed && styles.btnPressed,
+        pressed ? styles.btnPressed : null,
       ]}
     >
       <ThemedText type="defaultSemiBold" style={variant === 'secondary' ? styles.btnTextSecondary : styles.btnTextOnPrimary}>
@@ -541,133 +584,163 @@ export default function WebAppLikeScreen() {
       <StatusToast ref={toastRef} staticBaseUrl={STATIC_BASE} />
       <Modal ref={modalRef} t={t} />
 
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <ThemedView style={styles.header}>
-          <View style={styles.headerRow}>
-            <View style={styles.headerText}>
-              <ThemedText type="title">{tOrDefault(t, 'webapp.header.title', 'N.E.K.O 前端主页')}</ThemedText>
-              <ThemedText type="default">{tOrDefault(t, 'webapp.header.subtitle', '单页应用，无路由 / 无 SSR')}</ThemedText>
-            </View>
+      <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
+        <View style={styles.app}>
+          <View style={styles.header}>
+            <View style={styles.headerRow}>
+              <View style={styles.headerText}>
+                <ThemedText type="title" style={styles.h1}>
+                  {tOrDefault(t, 'webapp.header.title', 'N.E.K.O 前端主页')}
+                </ThemedText>
+                <ThemedText type="default" style={styles.subtitle}>
+                  {tOrDefault(t, 'webapp.header.subtitle', '单页应用，无路由 / 无 SSR')}
+                </ThemedText>
+              </View>
 
-            <View style={styles.langSwitch}>
-              <ThemedText type="defaultSemiBold" style={styles.langLabel}>
-                {tOrDefault(t, 'webapp.language.label', '语言')}
-              </ThemedText>
-              <View style={styles.langSeg}>
-                <Pressable
-                  onPress={() => setLanguage('zh-CN')}
-                  style={({ pressed }) => [
-                    styles.langSegBtn,
-                    language === 'zh-CN' && styles.langSegBtnActive,
-                    pressed && styles.btnPressed,
-                  ]}
-                >
-                  <ThemedText type="defaultSemiBold" style={language === 'zh-CN' ? styles.langSegTextActive : undefined}>
-                    {tOrDefault(t, 'webapp.language.zhCN', '中文')}
-                  </ThemedText>
-                </Pressable>
-                <Pressable
-                  onPress={() => setLanguage('en')}
-                  style={({ pressed }) => [
-                    styles.langSegBtn,
-                    language === 'en' && styles.langSegBtnActive,
-                    pressed && styles.btnPressed,
-                  ]}
-                >
-                  <ThemedText type="defaultSemiBold" style={language === 'en' ? styles.langSegTextActive : undefined}>
-                    {tOrDefault(t, 'webapp.language.en', 'English')}
-                  </ThemedText>
-                </Pressable>
+              <View style={styles.langSwitch}>
+                <ThemedText type="defaultSemiBold" style={styles.langLabel}>
+                  {tOrDefault(t, 'webapp.language.label', '语言')}
+                </ThemedText>
+                <View style={styles.langSeg}>
+                  <Pressable
+                    onPress={() => setLanguage('zh-CN')}
+                    style={({ pressed }) => [
+                      styles.langSegBtn,
+                      language === 'zh-CN' ? styles.langSegBtnActive : null,
+                      pressed ? styles.langSegBtnPressed : null,
+                    ]}
+                  >
+                    <ThemedText type="defaultSemiBold" style={language === 'zh-CN' ? styles.langSegTextActive : styles.langSegText}>
+                      {tOrDefault(t, 'webapp.language.zhCN', '中文')}
+                    </ThemedText>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => setLanguage('en')}
+                    style={({ pressed }) => [
+                      styles.langSegBtn,
+                      language === 'en' ? styles.langSegBtnActive : null,
+                      pressed ? styles.langSegBtnPressed : null,
+                    ]}
+                  >
+                    <ThemedText type="defaultSemiBold" style={language === 'en' ? styles.langSegTextActive : styles.langSegText}>
+                      {tOrDefault(t, 'webapp.language.en', 'English')}
+                    </ThemedText>
+                  </Pressable>
+                </View>
               </View>
             </View>
           </View>
-        </ThemedView>
 
-        <ThemedView style={styles.card}>
-          <ThemedText type="subtitle">{tOrDefault(t, 'webapp.card.title', '开始使用')}</ThemedText>
+          <View style={styles.card}>
+            <ThemedText type="subtitle" style={styles.cardTitle}>
+              {tOrDefault(t, 'webapp.card.title', '开始使用')}
+            </ThemedText>
 
-          <View style={styles.ol}>
-            <View style={styles.li}>
-              <ThemedText type="default">{`1. ${tOrDefault(t, 'webapp.card.step1', '在此处挂载你的组件或业务入口。')}`}</ThemedText>
+            <View style={styles.ol}>
+              <View style={styles.li}>
+                <ThemedText type="default" style={styles.listText}>
+                  {`1. ${tOrDefault(t, 'webapp.card.step1', '在此处挂载你的组件或业务入口。')}`}
+                </ThemedText>
+              </View>
+              <View style={styles.li}>
+                <ThemedText type="default" style={styles.listText}>
+                  {`2. ${tOrDefault(t, 'webapp.card.step2Prefix', '如需调用接口，可在 ')}`}
+                </ThemedText>
+                <ThemedText type="defaultSemiBold" style={styles.code}>
+                  @project_neko/request
+                </ThemedText>
+                <ThemedText type="default" style={styles.listText}>
+                  {tOrDefault(t, 'webapp.card.step2Suffix', ' 基础上封装请求。')}
+                </ThemedText>
+              </View>
+              <View style={styles.li}>
+                <ThemedText type="default" style={styles.listText}>
+                  {`3. ${tOrDefault(t, 'webapp.card.step3Prefix', '构建产物输出到 ')}`}
+                </ThemedText>
+                <ThemedText type="defaultSemiBold" style={styles.code}>
+                  frontend/dist/webapp
+                </ThemedText>
+                <ThemedText type="default" style={styles.listText}>
+                  {tOrDefault(t, 'webapp.card.step3Suffix', '（用于开发/调试），模板按需引用即可。')}
+                </ThemedText>
+              </View>
             </View>
-            <View style={styles.li}>
-              <ThemedText type="default">{`2. ${tOrDefault(t, 'webapp.card.step2Prefix', '如需调用接口，可在 ')}`}</ThemedText>
-              <ThemedText type="defaultSemiBold" style={styles.code}>
-                @project_neko/request
-              </ThemedText>
-              <ThemedText type="default">{tOrDefault(t, 'webapp.card.step2Suffix', ' 基础上封装请求。')}</ThemedText>
-            </View>
-            <View style={styles.li}>
-              <ThemedText type="default">{`3. ${tOrDefault(t, 'webapp.card.step3Prefix', '构建产物输出到 ')}`}</ThemedText>
-              <ThemedText type="defaultSemiBold" style={styles.code}>
-                frontend/dist/webapp
-              </ThemedText>
-              <ThemedText type="default">{tOrDefault(t, 'webapp.card.step3Suffix', '（用于开发/调试），模板按需引用即可。')}</ThemedText>
+
+            <View style={styles.actions}>
+              <AppButton onPress={handleClick}>{tOrDefault(t, 'webapp.actions.requestPageConfig', '请求 page_config')}</AppButton>
+              <AppButton variant="secondary" onPress={handleToast}>
+                {tOrDefault(t, 'webapp.actions.showToast', '显示 StatusToast')}
+              </AppButton>
+              <AppButton variant="primary" onPress={handleAlert}>
+                {tOrDefault(t, 'webapp.actions.modalAlert', 'Modal Alert')}
+              </AppButton>
+              <AppButton variant="success" onPress={handleConfirm}>
+                {tOrDefault(t, 'webapp.actions.modalConfirm', 'Modal Confirm')}
+              </AppButton>
+              <AppButton variant="danger" onPress={handlePrompt}>
+                {tOrDefault(t, 'webapp.actions.modalPrompt', 'Modal Prompt')}
+              </AppButton>
             </View>
           </View>
-
-          <View style={styles.actions}>
-            <AppButton onPress={handleClick}>{tOrDefault(t, 'webapp.actions.requestPageConfig', '请求 page_config')}</AppButton>
-            <AppButton variant="secondary" onPress={handleToast}>
-              {tOrDefault(t, 'webapp.actions.showToast', '显示 StatusToast')}
-            </AppButton>
-            <AppButton variant="primary" onPress={handleAlert}>
-              {tOrDefault(t, 'webapp.actions.modalAlert', 'Modal Alert')}
-            </AppButton>
-            <AppButton variant="success" onPress={handleConfirm}>
-              {tOrDefault(t, 'webapp.actions.modalConfirm', 'Modal Confirm')}
-            </AppButton>
-            <AppButton variant="danger" onPress={handlePrompt}>
-              {tOrDefault(t, 'webapp.actions.modalPrompt', 'Modal Prompt')}
-            </AppButton>
-          </View>
-        </ThemedView>
+        </View>
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
-  content: { padding: 16, gap: 12 },
+  // ===== WebApp (frontend/src/web/styles.css) 对齐：页面背景 / maxWidth / padding =====
+  root: { flex: 1, backgroundColor: '#f8fafc' },
+  page: { paddingTop: 48, paddingBottom: 96, paddingHorizontal: 24 },
+  app: { width: '100%', maxWidth: 960, alignSelf: 'center' },
 
-  header: {
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#ddd',
-  },
+  header: {},
   headerRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 16,
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
   headerText: { flex: 1, gap: 4 },
+  h1: { fontSize: 28, marginBottom: 8, color: '#0f172a' },
+  subtitle: { color: '#475569' },
 
-  langSwitch: { alignItems: 'flex-end', gap: 6 },
-  langLabel: { opacity: 0.8 },
-  langSeg: { flexDirection: 'row', gap: 8 },
+  langSwitch: { alignItems: 'flex-end', gap: 8, flexShrink: 0 },
+  langLabel: { fontSize: 14, color: '#475569' },
+  langSeg: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   langSegBtn: {
+    height: 32,
     paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 999,
+    justifyContent: 'center',
+    borderRadius: 8,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#bbb',
+    borderColor: '#e2e8f0',
     backgroundColor: '#fff',
   },
-  langSegBtnActive: { borderColor: '#2563eb', backgroundColor: '#dbeafe' },
-  langSegTextActive: { color: '#1d4ed8' },
+  langSegBtnActive: { borderColor: '#44b7fe', backgroundColor: '#d5f1ff' },
+  langSegBtnPressed: { opacity: 0.9 },
+  langSegText: { color: '#0f172a' },
+  langSegTextActive: { color: '#0f172a' },
 
+  // ===== Card (frontend/src/web/styles.css) 对齐 =====
   card: {
+    marginTop: 32,
+    backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 12,
-    gap: 10,
+    padding: 24,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#ddd',
+    borderColor: '#e2e8f0',
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+    gap: 12,
   },
+  cardTitle: { color: '#0f172a' },
   ol: { gap: 8 },
   li: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' },
+  listText: { color: '#334155' },
   code: {
     fontFamily: 'Menlo',
     backgroundColor: '#f3f4f6',
@@ -675,86 +748,131 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     marginHorizontal: 4,
+    color: '#0f172a',
   },
 
-  actions: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
+  actions: { marginTop: 16, flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
 
+  // ===== Button (packages/components/src/Button.css) 对齐 =====
   btn: {
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
     alignItems: 'center',
-  },
-  btnPrimary: { backgroundColor: '#111827' },
-  btnSecondary: {
-    backgroundColor: '#f3f4f6',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#d1d5db',
-  },
-  btnSuccess: { backgroundColor: '#16a34a' },
-  btnDanger: { backgroundColor: '#dc2626' },
-  btnPressed: { opacity: 0.7 },
-  btnTextOnPrimary: { color: '#fff' },
-  btnTextSecondary: { color: '#111827' },
-
-  toastContainer: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-    right: 12,
-    zIndex: 999,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    backgroundColor: 'rgba(17, 24, 39, 0.92)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-  },
-  toastText: { color: '#fff', textAlign: 'center' },
-
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    padding: 18,
     justifyContent: 'center',
   },
+  btnPrimary: { backgroundColor: '#44b7fe' },
+  btnSecondary: { backgroundColor: '#d5f1ff' },
+  btnSuccess: { backgroundColor: '#44b7fe' },
+  btnDanger: { backgroundColor: '#ff6b6b' },
+  btnPressed: { opacity: 0.85 },
+  btnTextOnPrimary: { color: '#fff' },
+  btnTextSecondary: { color: '#333' },
+
+  // ===== StatusToast (packages/components/src/StatusToast.css) 对齐（近似实现）=====
+  toastContainer: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    zIndex: 999,
+    minWidth: 280,
+    maxWidth: 500,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  toastContainerNarrow: {
+    top: 10,
+    left: 10,
+    right: 10,
+    minWidth: 0,
+    maxWidth: undefined,
+  },
+  toastBg: {
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+    paddingLeft: 50,
+    paddingRight: 50,
+    justifyContent: 'center',
+  },
+  toastBgImage: { borderRadius: 12 },
+  toastOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.10)',
+  },
+  toastPaw: {
+    position: 'absolute',
+    left: 12,
+    top: '50%',
+    transform: [{ translateY: -25 }],
+    fontSize: 50,
+    color: '#fff',
+  },
+  toastText: { color: '#fff', textAlign: 'center', fontSize: 18, fontWeight: '500', lineHeight: 18 * 1.6 },
+
+  // ===== Modal (packages/components/src/Modal/Modal.css) 对齐 =====
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    padding: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   modalDialog: {
-    borderRadius: 14,
-    padding: 14,
+    width: '100%',
+    minWidth: 320,
+    maxWidth: 500,
+    borderRadius: 12,
     backgroundColor: '#fff',
-    gap: 10,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 32,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
   },
-  modalTitle: { color: '#111827' },
-  modalMessage: { color: '#374151' },
+  modalHeader: {
+    paddingTop: 20,
+    paddingHorizontal: 24,
+    paddingBottom: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#e0e0e0',
+  },
+  modalTitle: { color: '#222', fontWeight: '600' },
+  modalBody: { paddingVertical: 20, paddingHorizontal: 24 },
+  modalMessage: { color: '#444', lineHeight: 16 * 1.6 },
   modalInput: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#bbb',
-    borderRadius: 10,
-    paddingHorizontal: 12,
+    width: '100%',
     paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#ccc',
+    borderRadius: 6,
+    fontSize: 16,
+    marginTop: 12,
     backgroundColor: '#fff',
-    fontSize: 14,
   },
-  modalActions: {
+  modalFooter: {
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#e0e0e0',
     flexDirection: 'row',
     justifyContent: 'flex-end',
     gap: 10,
-    marginTop: 2,
   },
   modalBtn: {
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 6,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  modalBtnPrimary: { backgroundColor: '#111827' },
-  modalBtnDanger: { backgroundColor: '#dc2626' },
-  modalBtnSecondary: {
-    backgroundColor: '#f3f4f6',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#d1d5db',
-  },
+  modalBtnPressed: { opacity: 0.85 },
+  modalBtnPrimary: { backgroundColor: '#4f8cff' },
+  modalBtnSecondary: { backgroundColor: '#e0e0e0' },
+  modalBtnDanger: { backgroundColor: '#e74c3c' },
   modalBtnTextOnPrimary: { color: '#fff' },
+  modalBtnTextOnSecondary: { color: '#444' },
 });
 
 

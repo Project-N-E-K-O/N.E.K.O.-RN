@@ -8,8 +8,8 @@
   padding: 18px 24px;
   padding-left: 50px; /* 为左侧猫爪留出空间 */
   padding-right: 50px; /* 对称的右侧 padding，让文本在中间区域居中 */
-  /* 默认指向 /static/icons，可通过变量覆写以适配独立 static_url */
-  background-image: var(--toast-background-url, url("/static/icons/toast_background.png"));
+  /* 默认使用包内资源；宿主可通过变量覆写以适配独立 static_url */
+  background-image: var(--toast-background-url, url("./assets/toast_background.png"));
   background-size: 100% 100%;
   background-position: center;
   background-repeat: no-repeat;

@@ -1,9 +1,10 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { Directory, File, Paths } from 'expo-file-system';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ReactNativeLive2dView } from 'react-native-live2d';
 import { downloadDependenciesFromLocalModel, removeDownloadedModel } from '../utils/live2dDownloader';
+import { useDevConnectionConfig } from '@/hooks/useDevConnectionConfig';
 
 function printDirectory(directory: Directory, indent: number = 0) {
   console.log(`${' '.repeat(indent)} + ${directory.name} - ${directory.uri}`);
@@ -21,13 +22,16 @@ interface RNLive2dProps { }
 
 const RNLive2d: React.FC<RNLive2dProps> = () => {
   // 模型配置常量
+  const { config } = useDevConnectionConfig();
   const BACKEND_SCHEME = 'http';
-  const BACKEND_HOST = '192.168.88.38';
-  // const BACKEND_HOST = '192.168.50.66';
+  const BACKEND_HOST = config.host;
   const BACKEND_PORT = 8081;
   const LIVE2D_PATH = 'live2d';
   const MODEL_NAME = 'mao_pro';
-  const MODEL_BASE_URL = `${BACKEND_SCHEME}://${BACKEND_HOST}:${BACKEND_PORT}/${LIVE2D_PATH}/${MODEL_NAME}`;
+  const MODEL_BASE_URL = useMemo(
+    () => `${BACKEND_SCHEME}://${BACKEND_HOST}:${BACKEND_PORT}/${LIVE2D_PATH}/${MODEL_NAME}`,
+    [BACKEND_HOST]
+  );
 
   const [currentMotion, setCurrentMotion] = useState('Idle');
   const [currentExpression, setCurrentExpression] = useState('exp_exp_01');
