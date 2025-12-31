@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+  <!-- Dev: 允许明文 HTTP（仅 development 构建生效）
+       现实约束：Android 不支持对 192.168.x.x 这类“IP 段”做白名单通配，
+       且真机通常无法方便地改 hosts；为支持每位开发者各自的局域网服务器，
+       这里选择在 dev 构建中放开 cleartext。生产构建仍会严格禁止。 -->
+  <base-config cleartextTrafficPermitted="true" />
+
+  <!-- 常见开发场景：
+       - Android 模拟器访问宿主机：10.0.2.2
+       - 本机：localhost / 127.0.0.1
+       如需 LAN IP（例如 192.168.x.x），建议使用一个开发域名（例如 dev.api.neko.local）映射到该 IP，
+       再将该域名加入下方白名单，以避免在生产包里允许任意 IP 的 HTTP。 -->
+  <!-- 仍保留示例白名单，便于未来收紧策略；在 base-config=true 时该段不是必须 -->
+  <domain-config cleartextTrafficPermitted="true">
+    <domain includeSubdomains="false">localhost</domain>
+    <domain includeSubdomains="false">127.0.0.1</domain>
+    <domain includeSubdomains="false">10.0.2.2</domain>
+    <!-- 说明：
+         Android 的 network security config 不支持 192.168.0.0/16 这类“IP 段”通配；
+         若你要访问局域网的 192.168.x.x 服务，推荐用一个开发域名（例如 dev.neko.local）
+         通过 hosts/DNS/mDNS 映射到该 IP，再把该域名加到白名单。 -->
+    <domain includeSubdomains="false">dev.neko.local</domain>
+  </domain-config>
+</network-security-config>
