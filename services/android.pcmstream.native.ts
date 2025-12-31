@@ -19,7 +19,7 @@ export const AUDIO_CONFIG = {
 export class AndroidPCMStreamService {
 
     private wsServiceRef: WSService;
-    private isRecoding: boolean = false;
+    private isRecording: boolean = false;
     private isStreaming: boolean = false;
 
     private audioChunksCount: number = 0;
@@ -52,7 +52,7 @@ export class AndroidPCMStreamService {
     // 注意：麦克风暂停/恢复现在由 PCMStreamPlayer 自动管理
 
     public getIsRecording() {
-        return this.isRecoding;
+        return this.isRecording;
     }
 
 
@@ -70,7 +70,7 @@ export class AndroidPCMStreamService {
 
     private setupEventListeners() {
         this.subscription = PCMStream.addListener('onAudioFrame', (event) => {
-            if (!this.isRecoding || !event.pcm) return;
+            if (!this.isRecording || !event.pcm) return;
 
             // delta_ts.current = event.ts - last_ts.current;
             // last_ts.current = event.ts;
@@ -178,7 +178,7 @@ export class AndroidPCMStreamService {
             // 开始录音：48kHz采样，1536帧，重采样到16kHz
             PCMStream.startRecording(48000, 1536, 16000);
 
-            this.isRecoding = true;
+            this.isRecording = true;
             console.log('✅ 录音已启动，等待onAudioFrame事件...');
 
         } catch (error) {
@@ -194,7 +194,7 @@ export class AndroidPCMStreamService {
             console.log('🛑 停止录音...');
             PCMStream.stopRecording();
 
-            this.isRecoding = false;
+            this.isRecording = false;
 
             // 发送剩余的缓冲区数据（如果有的话）
             if (this.tempBuffer.length > 0) {
@@ -386,7 +386,7 @@ export class AndroidPCMStreamService {
     }
 
     public async toggleRecording() {
-        if (this.isRecoding) {
+        if (this.isRecording) {
             await this.stopRecording();
         } else {
             await this.startRecording();
@@ -411,7 +411,7 @@ export class AndroidPCMStreamService {
         this.audioBuffer.fill(0);
         this.tempBuffer = [];
         this.isStreaming = false;
-        this.isRecoding = false;
+        this.isRecording = false;
         this.isPlaying = false;
         this.lastSendTime = 0;
         this.sendCount = 0;
@@ -430,7 +430,7 @@ export class AndroidPCMStreamService {
             audioBufferLength: this.audioBuffer.length,
             isPlayerInited: this.isPlayerInited,
             isStreaming: this.isStreaming,
-            isRecoding: this.isRecoding,
+            isRecording: this.isRecording,
             isPlaying: this.isPlaying,
             lastSendTime: this.lastSendTime,
             sendCount: this.sendCount,

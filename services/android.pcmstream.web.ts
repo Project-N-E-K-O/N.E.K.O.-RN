@@ -17,14 +17,14 @@ export const AUDIO_CONFIG = {
  */
 export class AndroidPCMStreamService {
   private wsServiceRef: WSService;
-  private isRecoding = false;
+  private isRecording = false;
 
   constructor(wsServiceRef: WSService) {
     this.wsServiceRef = wsServiceRef;
   }
 
   public getIsRecording() {
-    return this.isRecoding;
+    return this.isRecording;
   }
 
   public init() {
@@ -37,7 +37,7 @@ export class AndroidPCMStreamService {
 
   public async toggleRecording() {
     console.warn('[AndroidPCMStreamService:web] toggleRecording() is not supported on web.');
-    this.isRecoding = !this.isRecoding;
+    this.isRecording = !this.isRecording;
   }
 
   public async playPCMData(_arrayBuffer: ArrayBuffer) {
@@ -53,7 +53,7 @@ export class AndroidPCMStreamService {
   }
 
   public uninitializeAudio() {
-    this.isRecoding = false;
+    this.isRecording = false;
   }
 
   public getStats() {
@@ -64,7 +64,7 @@ export class AndroidPCMStreamService {
       audioBufferLength: 0,
       isPlayerInited: false,
       isStreaming: false,
-      isRecoding: this.isRecoding,
+      isRecording: this.isRecording,
       isPlaying: false,
       lastSendTime: 0,
       sendCount: 0,
