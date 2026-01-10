@@ -3,12 +3,15 @@ import { useChatMessages } from '@/hooks/useChatMessages';
 import { useDevConnectionConfig } from '@/hooks/useDevConnectionConfig';
 import { useLipSync } from '@/hooks/useLipSync';
 import { useLive2D } from '@/hooks/useLive2D';
+import { useLive2DAgentBackend } from '@/hooks/useLive2DAgentBackend';
+import { useLive2DPreferences } from '@/hooks/useLive2DPreferences';
 import { mainManager } from '@/utils/MainManager';
 import { useFocusEffect } from '@react-navigation/native';
-import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ReactNativeLive2dView } from 'react-native-live2d';
-
+// 引入同步后的 ChatContainer 组件（可选：如果需要完整的聊天 UI）
+// import { ChatContainer } from '@project_neko/components';
 
 interface MainUIScreenProps { }
 
@@ -17,6 +20,18 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
 
   const [isPageFocused, setIsPageFocused] = useState(true);
   const { config } = useDevConnectionConfig();
+
+  // Agent Backend 管理
+  const { agent, onAgentChange, refreshAgentState } = useLive2DAgentBackend({
+    apiBase: `http://${config.host}:${config.port}`,
+    showToast: (message, duration) => {
+      Alert.alert('提示', message);
+    },
+    openPanel: null, // 可以根据 UI 状态动态设置
+  });
+
+  // Live2D Preferences 持久化
+  const { repository: preferencesRepository } = useLive2DPreferences();
 
   const chat = useChatMessages({
     maxMessages: 100,
@@ -69,6 +84,8 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
     backendHost: config.host,
     backendPort: 8081,
     autoLoad: false,
+    // TODO: 集成 preferences repository 到 useLive2D hook
+    // 这需要修改 useLive2D 以支持持久化
   });
 
   // 口型同步 hook（无平滑模式，与 Web 版本一致）
@@ -162,6 +179,21 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
     mainManager.onLive2DTap();
   }, []);
 
+  // Agent 控制按钮示例
+  const handleToggleAgent = useCallback(() => {
+    onAgentChange('master', !agent.master);
+  }, [agent.master, onAgentChange]);
+
+  // 显示 Agent 状态（调试用）
+  useEffect(() => {
+    console.log('🤖 Agent 状态:', agent.statusText, {
+      master: agent.master,
+      keyboard: agent.keyboard,
+      mcp: agent.mcp,
+      userPlugin: agent.userPlugin,
+    });
+  }, [agent]);
+
   return (
     <View style={styles.container}>
       <View style={styles.live2dContainer}>
@@ -203,7 +235,7 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
               styles.buttonIdle,
               pressed && styles.buttonPressed,
             ]} onPress={handleLoadModel}>
-            <Text style={styles.buttonText}>Load Model</Text>
+            <Text style={styles.buttonText}>加载模型</Text>
           </Pressable>
           <Pressable
             style={({ pressed }) => [
@@ -216,6 +248,19 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
           >
             <Text style={styles.buttonText}>{audio.isRecording ? '🎤 停止录音' : '🎤 开始聊天'}</Text>
           </Pressable>
+          <Pressable
+            style={({ pressed }) => [
+              styles.button,
+              agent.master ? styles.buttonAgent : styles.buttonIdle,
+              pressed && styles.buttonPressed,
+            ]}
+            onPress={handleToggleAgent}
+          >
+            <Text style={styles.buttonText}>
+              {agent.master ? '🤖 Agent ON' : '🤖 Agent OFF'}
+            </Text>
+          </Pressable>
+          <Text style={styles.statusText}>{agent.statusText}</Text>
         </View>
       </View>
     </View>
@@ -296,6 +341,15 @@ const styles = StyleSheet.create({
   buttonDisabled: {
     backgroundColor: '#999',
     opacity: 0.5,
+  },
+  buttonAgent: {
+    backgroundColor: '#007AFF',
+  },
+  statusText: {
+    color: '#fff',
+    fontSize: 12,
+    marginTop: 8,
+    textAlign: 'center',
   },
 });
 
