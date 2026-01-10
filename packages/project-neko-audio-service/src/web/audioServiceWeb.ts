@@ -1,4 +1,4 @@
-import { TinyEmitter } from "../emitter";
+import { TinyEmitter } from "@project_neko/common";
 import { SpeechInterruptController } from "../protocol";
 import type { AudioService, AudioServiceEvents, AudioServiceState, NekoWsIncomingJson, RealtimeClientLike } from "../types";
 import { WebAudioChunkPlayer } from "./player";

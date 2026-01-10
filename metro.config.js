@@ -29,6 +29,9 @@ config.resolver.extraNodeModules = {
   '@project_neko/common': path.resolve(projectRoot, 'packages/project-neko-common'),
   '@project_neko/request': path.resolve(projectRoot, 'packages/project-neko-request'),
   '@project_neko/components': path.resolve(projectRoot, 'packages/project-neko-components'),
+  '@project_neko/audio-service': path.resolve(projectRoot, 'packages/project-neko-audio-service'),
+  '@project_neko/live2d-service': path.resolve(projectRoot, 'packages/project-neko-live2d-service'),
+  '@project_neko/realtime': path.resolve(projectRoot, 'packages/project-neko-realtime'),
 };
 
 module.exports = config;

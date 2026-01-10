@@ -1,5 +1,5 @@
 import PCMStream from "react-native-pcm-stream";
-import { TinyEmitter } from "../emitter";
+import { TinyEmitter } from "@project_neko/common";
 import { SpeechInterruptController } from "../protocol";
 import type { AudioService, AudioServiceEvents, AudioServiceState, NekoWsIncomingJson, RealtimeClientLike } from "../types";
 

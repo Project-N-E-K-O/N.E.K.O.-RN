@@ -10,7 +10,7 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 
 const PREFERENCES_KEY = '@neko:live2d_preferences';
 
@@ -163,7 +163,7 @@ export function createLive2DPreferencesRepository(): Live2DPreferencesRepository
  * 提供 Live2D 偏好设置的加载和保存功能
  */
 export function useLive2DPreferences() {
-  const repository = createLive2DPreferencesRepository();
+  const repository = useMemo(() => createLive2DPreferencesRepository(), []);
 
   const loadPreferences = useCallback(
     async (modelUri: string): Promise<Live2DPreferencesSnapshot | null> => {
