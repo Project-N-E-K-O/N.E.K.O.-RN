@@ -56,12 +56,50 @@ packages-overrides/
 
 ## 当前 Overlay 清单
 
+### project-neko-common
+
+- `package.json`
+  - **原因**：保持 vite 依赖版本声明（修复 CVE-2025-62522），避免同步时被覆盖为旧版本
+  - **内容**：`devDependencies.vite: ^7.1.11`
+  - **添加时间**：2026-01-10
+  - **说明**：上游已修复到 ^7.1.11，但在同步脚本运行前需要此 override 确保版本正确
+
 ### project-neko-components
 
 - `src/assets/toast_background.png`
   - **原因**：RN 特有的 toast 背景图片，Web 端使用纯 CSS 实现
   - **大小**：34KB
   - **添加时间**：2026-01-10
+
+- `package.json`
+  - **原因**：保持 vite 依赖版本声明（修复 CVE-2025-62522），避免同步时被覆盖为旧版本
+  - **内容**：`devDependencies.vite: ^7.1.11`
+  - **添加时间**：2026-01-10
+  - **说明**：上游已修复到 ^7.1.11，但在同步脚本运行前需要此 override 确保版本正确
+
+### project-neko-audio-service
+
+- `package.json`
+  - **原因**：保持 vite 依赖版本声明（修复 CVE-2025-62522），避免同步时被覆盖为旧版本
+  - **内容**：`devDependencies.vite: ^7.1.11`
+  - **添加时间**：2026-01-10
+  - **说明**：上游已修复到 ^7.1.11，override 确保安全版本
+
+### project-neko-live2d-service
+
+- `package.json`
+  - **原因**：保持 vite 依赖版本声明（修复 CVE-2025-62522），避免同步时被覆盖为旧版本
+  - **内容**：`devDependencies.vite: ^7.1.11`
+  - **添加时间**：2026-01-10
+  - **说明**：上游已修复到 ^7.1.11，override 确保安全版本
+
+### project-neko-realtime
+
+- `package.json`
+  - **原因**：保持 vite 依赖版本声明（修复 CVE-2025-62522），避免同步时被覆盖为旧版本
+  - **内容**：`devDependencies.vite: ^7.1.11`
+  - **添加时间**：2026-01-10
+  - **说明**：上游已修复到 ^7.1.11，override 确保安全版本
 
 ## 故障排查
 
