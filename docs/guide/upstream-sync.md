@@ -50,5 +50,5 @@ npm run typecheck
 
 请看上游文档入口（本仓库只做索引不复制）：
 
-- `docs/upstream-frontend-packages.md`
+- `../upstream-frontend-packages.md`
 

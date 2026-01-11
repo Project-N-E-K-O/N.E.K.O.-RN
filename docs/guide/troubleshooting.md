@@ -30,6 +30,6 @@ npx expo start --clear
 
 ### 如果仍然失败
 
-- 升级 Expo SDK / Metro 相关依赖后重试（有时上游已修复）。
+- 升级 Expo SDK / Metro 相关依赖后重试（上游版本差异可能影响该问题）。
 - 评估 Web bundler 方案（Metro ↔ Webpack）作为兜底，但需要统一团队策略再推进。
 

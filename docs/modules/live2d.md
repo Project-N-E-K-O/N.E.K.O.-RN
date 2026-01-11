@@ -156,37 +156,13 @@ Android 侧采用两层协作：
   - Android `ReactNativeLive2dView.loadModelFromFileSystem()` 支持 `file://` 前缀（会剥离）。
 - 模型依赖文件需要与 `model3.json` 同目录结构可访问（`Live2DService` 会负责下载补齐）。
 
-## 已知不一致点（文档化，后续按本文改代码）
-
-### 1) 点击事件命名不一致（已修复）
-
-- Android 原生 View 事件名为 `onTap`
-- RN 包装层 `packages/react-native-live2d/src/ReactNativeLive2dView.tsx` 已统一：
-  - 业务层传 `onTap` 可以收到
-  - 同时保留 `onTouchEnd` 作为历史兼容（包装层会在 tap 时同时触发）
-
-### 2) `initializeLive2D()` 类型声明与 Android 实现不对齐（已修复）
-
-- `packages/react-native-live2d/src/ReactNativeLive2d.types.ts` 声明了 `initializeLive2D(): Promise<boolean>`
-- Android `ReactNativeLive2dModule.kt` 已导出 `initializeLive2D`，内部调用 `ensureLive2DInitialized()` 返回 `boolean`
-
-### 3) `autoBlink/autoBreath`（已支持）
-
-- JS 层与 props 提供 `autoBlink/autoBreath`
-- Android 侧已在 `LAppModel.update()` 中按开关决定是否执行：
-  - `eyeBlink.updateParameters(...)`
-  - `breath.updateParameters(...)`
-
-**语义**：
-- 该开关仅控制“自动眨眼/自动呼吸”的叠加效果，不影响 motion / expression / physics 等其它系统。
-
 ## 最小验收（Android）
 
 - **模型加载**
   - 进入页面能触发下载/校验，并最终触发 `onModelLoaded`
   - `modelPath` 指向的文件存在且可被原生读取
 - **交互**
-  - 点击模型能稳定回调到 RN（修复事件名后验证）
+  - 点击模型能稳定回调到 RN
 - **口型同步**
   - 播放音频时 `PCMStream` 振幅更新能驱动嘴巴开合（`setMouthValue` 生效）
   - 播放停止后嘴巴归零（`onPlaybackStop` → `setMouthValue(0)`）

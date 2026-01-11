@@ -7,10 +7,11 @@
 本项目采用 **SDD (Spec-Driven Development)** 规范驱动开发模式。文档按功能模块化划分，作为 AI 与人类协作的"单一真理源"。
 
 ### 0. 开发策略（重要）⭐
-- **[RN 开发策略](./RN-DEVELOPMENT-STRATEGY.md)**：**优先使用 React/Web 组件**，渐进式迁移方案（必读）
-- **[跨平台组件策略](./CROSS-PLATFORM-COMPONENT-STRATEGY.md)**：同时支持 Web 和 RN 的组件实现方案（进阶）
-- **[快速参考卡片](./QUICK-REFERENCE.md)**：开发时的速查手册（推荐收藏）
+- **[RN 开发策略](./RN-DEVELOPMENT-STRATEGY.md)**：当前开发策略与组件现状矩阵（⭐）
+- **[跨平台组件策略](./CROSS-PLATFORM-COMPONENT-STRATEGY.md)**：当前跨端实现方式（`.native.tsx`）（⭐）
+- **[快速参考卡片](./QUICK-REFERENCE.md)**：命令/入口/高频坑（速查）
 - **[常见问题排查](./guide/troubleshooting.md)**：开发/构建常见问题与解决方案
+- **[Android 下一步路线图](./ANDROID-NEXT-STEPS.md)**：Android 真机体验对齐 Web 的优先级与验收点（⭐ 推荐按此推进）
 
 ### 1. 核心概述 (Core)
 - [系统概述](./core/overview.md)：项目使命、技术能力与技术栈。
@@ -37,4 +38,4 @@
 1. **先设计后代码**：重大功能前必须先在 `/docs` 中更新相关 Spec。
 2. **模块化维护**：避免在单体文件中堆积逻辑，按功能域进行分割。
 3. **闭环验证**：功能的验收应严格对齐文档中描述的规格。
-4. **渐进式迁移**：优先使用 Web 组件快速实现功能，参考 [RN 开发策略](./RN-DEVELOPMENT-STRATEGY.md)。
+4. **渐进式迁移**：优先复用共享 packages，并把关键 UI 通过 `.native.tsx` 落地到 Android 真机，参考 [RN 开发策略](./RN-DEVELOPMENT-STRATEGY.md)。
