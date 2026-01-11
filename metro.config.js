@@ -9,6 +9,57 @@ config.resolver.assetExts.push('moc3', 'motion3', 'exp3', 'physics3', 'pose3', '
 // 确保 .js 文件不在 assetExts 中，以免干扰 HMR
 config.resolver.assetExts = config.resolver.assetExts.filter(ext => ext !== 'js');
 
+// 配置源文件扩展名优先级
+// 保持默认配置，Metro 会根据平台自动选择正确的扩展名
+// 默认顺序：平台特定 (.native.*, .ios.*, .android.*, .web.*) > 通用 (.tsx, .ts, .jsx, .js)
+const defaultSourceExts = config.resolver.sourceExts || ['js', 'jsx', 'json', 'ts', 'tsx'];
+config.resolver.sourceExts = [...defaultSourceExts];
+
+// 解决 Web 平台上 React Native 内部模块导入问题
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  // 在 Web 平台上，跳过或重定向 React Native 的内部模块
+  if (platform === 'web') {
+    // 将 react-native 导入重定向到我们的扩展包装器（包含 TurboModuleRegistry）
+    if (moduleName === 'react-native') {
+      return {
+        type: 'sourceFile',
+        filePath: path.resolve(__dirname, 'react-native-web-extended.js'),
+      };
+    }
+    
+    // 不要 shim react-native-web 的任何模块
+    if (moduleName.includes('react-native-web')) {
+      return context.resolveRequest(context, moduleName, platform);
+    }
+    
+    // 不要 shim 相对路径导入 - 让 react-native-web 内部的相对导入正常工作
+    if (moduleName.startsWith('./') || moduleName.startsWith('../')) {
+      return context.resolveRequest(context, moduleName, platform);
+    }
+    
+    // 处理 React Native 内部模块 - 只匹配绝对路径导入
+    if (
+      moduleName.startsWith('react-native/Libraries') ||
+      moduleName.startsWith('react-native/src/private') ||
+      moduleName.startsWith('react-native/src/') ||
+      moduleName.includes('ReactDevToolsSettingsManager') ||
+      moduleName.includes('setUpReactDevTools') ||
+      moduleName.startsWith('@expo/metro-runtime/src/location/install.native') ||
+      moduleName.includes('NativeReactNativeFeatureFlags')
+    ) {
+      console.log('🔄 [Metro] Shimming module for web:', moduleName);
+      // 返回一个空的 shim 模块
+      return {
+        type: 'sourceFile',
+        filePath: path.resolve(__dirname, 'metro-web-shims.js'),
+      };
+    }
+  }
+  
+  // 使用默认的解析逻辑
+  return context.resolveRequest(context, moduleName, platform);
+};
+
 // 支持 monorepo 结构
 const projectRoot = __dirname;
 const workspaceRoot = path.resolve(projectRoot, '.');

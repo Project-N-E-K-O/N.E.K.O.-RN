@@ -1,0 +1,269 @@
+/**
+ * Live2DRightToolbar 共享业务逻辑 Hooks
+ * 
+ * 此文件包含 Web 和 RN 版本共享的业务逻辑
+ */
+
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { tOrDefault, type TFunction } from '../i18n';
+import type {
+  Live2DRightToolbarPanel,
+  Live2DAgentToggleId,
+  Live2DSettingsToggleId,
+  Live2DAgentState,
+  Live2DSettingsState,
+  ToolbarButton,
+  ToggleRow,
+} from './types';
+
+/**
+ * 面板开关逻辑（Web 和 RN 共享）
+ */
+export function usePanelToggle(
+  openPanel: Live2DRightToolbarPanel,
+  onOpenPanelChange: (panel: Live2DRightToolbarPanel) => void,
+  animationDuration = 240
+) {
+  const [closingPanel, setClosingPanel] = useState<Exclude<Live2DRightToolbarPanel, null> | null>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const startClose = useCallback(
+    (panel: Exclude<Live2DRightToolbarPanel, null>) => {
+      setClosingPanel(panel);
+      onOpenPanelChange(null);
+
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+      }
+      closeTimerRef.current = setTimeout(() => {
+        setClosingPanel((prev) => (prev === panel ? null : prev));
+        closeTimerRef.current = null;
+      }, animationDuration);
+    },
+    [onOpenPanelChange, animationDuration]
+  );
+
+  const togglePanel = useCallback(
+    (panel: Exclude<Live2DRightToolbarPanel, null>) => {
+      if (openPanel === panel) {
+        startClose(panel);
+        return;
+      }
+
+      // 切换：先关掉旧 panel（播放退出动画），再打开新 panel
+      if (openPanel) {
+        startClose(openPanel);
+      }
+      onOpenPanelChange(panel);
+    },
+    [onOpenPanelChange, openPanel, startClose]
+  );
+
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+        closeTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  return {
+    closingPanel,
+    togglePanel,
+    startClose,
+    animationDuration,
+  };
+}
+
+/**
+ * 按钮配置（Web 和 RN 共享，但图标路径可能不同）
+ */
+export function useToolbarButtons({
+  micEnabled,
+  screenEnabled,
+  openPanel,
+  goodbyeMode,
+  isMobile,
+  onToggleMic,
+  onToggleScreen,
+  onGoodbye,
+  togglePanel,
+  t,
+  iconBasePath = '/static/icons', // RN 可覆盖
+}: {
+  micEnabled: boolean;
+  screenEnabled: boolean;
+  openPanel: Live2DRightToolbarPanel;
+  goodbyeMode: boolean;
+  isMobile?: boolean;
+  onToggleMic: (next: boolean) => void;
+  onToggleScreen: (next: boolean) => void;
+  onGoodbye: () => void;
+  togglePanel: (panel: Exclude<Live2DRightToolbarPanel, null>) => void;
+  t?: TFunction;
+  iconBasePath?: string;
+}): ToolbarButton[] {
+  return useMemo(
+    () =>
+      [
+        {
+          id: 'mic' as const,
+          title: tOrDefault(t, 'buttons.voiceControl', '语音控制'),
+          hidden: false,
+          active: micEnabled,
+          onClick: () => onToggleMic(!micEnabled),
+          icon: `${iconBasePath}/mic_icon_off.png`,
+        },
+        {
+          id: 'screen' as const,
+          title: tOrDefault(t, 'buttons.screenShare', '屏幕分享'),
+          hidden: false,
+          active: screenEnabled,
+          onClick: () => onToggleScreen(!screenEnabled),
+          icon: `${iconBasePath}/screen_icon_off.png`,
+        },
+        {
+          id: 'agent' as const,
+          title: tOrDefault(t, 'buttons.agentTools', 'Agent工具'),
+          hidden: Boolean(isMobile),
+          active: openPanel === 'agent',
+          onClick: () => togglePanel('agent'),
+          icon: `${iconBasePath}/Agent_off.png`,
+          hasPanel: true,
+        },
+        {
+          id: 'settings' as const,
+          title: tOrDefault(t, 'buttons.settings', '设置'),
+          hidden: false,
+          active: openPanel === 'settings',
+          onClick: () => togglePanel('settings'),
+          icon: `${iconBasePath}/set_off.png`,
+          hasPanel: true,
+        },
+        {
+          id: 'goodbye' as const,
+          title: tOrDefault(t, 'buttons.leave', '请她离开'),
+          hidden: Boolean(isMobile),
+          active: goodbyeMode,
+          onClick: onGoodbye,
+          icon: `${iconBasePath}/rest_off.png`,
+          hasPanel: false,
+        },
+      ].filter((b) => !b.hidden),
+    [goodbyeMode, isMobile, micEnabled, onGoodbye, onToggleMic, onToggleScreen, openPanel, screenEnabled, t, togglePanel, iconBasePath]
+  );
+}
+
+/**
+ * Settings Toggle 行配置
+ */
+export function useSettingsToggleRows(
+  settings: Live2DSettingsState,
+  t?: TFunction
+): ToggleRow[] {
+  return useMemo(
+    () => [
+      {
+        id: 'mergeMessages' as const,
+        label: tOrDefault(t, 'settings.toggles.mergeMessages', '合并消息'),
+        checked: settings.mergeMessages,
+      },
+      {
+        id: 'allowInterrupt' as const,
+        label: tOrDefault(t, 'settings.toggles.allowInterrupt', '允许打断'),
+        checked: settings.allowInterrupt,
+      },
+      {
+        id: 'proactiveChat' as const,
+        label: tOrDefault(t, 'settings.toggles.proactiveChat', '主动搭话'),
+        checked: settings.proactiveChat,
+      },
+      {
+        id: 'proactiveVision' as const,
+        label: tOrDefault(t, 'settings.toggles.proactiveVision', '自主视觉'),
+        checked: settings.proactiveVision,
+      },
+    ],
+    [settings, t]
+  );
+}
+
+/**
+ * Agent Toggle 行配置
+ */
+export function useAgentToggleRows(
+  agent: Live2DAgentState,
+  t?: TFunction
+): ToggleRow[] {
+  return useMemo(
+    () => [
+      {
+        id: 'master' as const,
+        label: tOrDefault(t, 'settings.toggles.agentMaster', 'Agent总开关'),
+        checked: agent.master,
+        disabled: Boolean(agent.disabled.master),
+      },
+      {
+        id: 'keyboard' as const,
+        label: tOrDefault(t, 'settings.toggles.keyboardControl', '键鼠控制'),
+        checked: agent.keyboard,
+        disabled: Boolean(agent.disabled.keyboard),
+      },
+      {
+        id: 'mcp' as const,
+        label: tOrDefault(t, 'settings.toggles.mcpTools', 'MCP工具'),
+        checked: agent.mcp,
+        disabled: Boolean(agent.disabled.mcp),
+      },
+      {
+        id: 'userPlugin' as const,
+        label: tOrDefault(t, 'settings.toggles.userPlugin', '用户插件'),
+        checked: agent.userPlugin,
+        disabled: Boolean(agent.disabled.userPlugin),
+      },
+    ],
+    [agent, t]
+  );
+}
+
+/**
+ * Settings 菜单项配置
+ */
+export function useSettingsMenuItems(t?: TFunction, iconBasePath = '/static/icons') {
+  return useMemo(
+    () => [
+      {
+        id: 'live2dSettings' as const,
+        label: tOrDefault(t, 'settings.menu.live2dSettings', 'Live2D设置'),
+        icon: `${iconBasePath}/live2d_settings_icon.png`,
+      },
+      {
+        id: 'apiKeys' as const,
+        label: tOrDefault(t, 'settings.menu.apiKeys', 'API密钥'),
+        icon: `${iconBasePath}/api_key_icon.png`,
+      },
+      {
+        id: 'characterManage' as const,
+        label: tOrDefault(t, 'settings.menu.characterManage', '角色管理'),
+        icon: `${iconBasePath}/character_icon.png`,
+      },
+      {
+        id: 'voiceClone' as const,
+        label: tOrDefault(t, 'settings.menu.voiceClone', '声音克隆'),
+        icon: `${iconBasePath}/voice_clone_icon.png`,
+      },
+      {
+        id: 'memoryBrowser' as const,
+        label: tOrDefault(t, 'settings.menu.memoryBrowser', '记忆浏览'),
+        icon: `${iconBasePath}/memory_icon.png`,
+      },
+      {
+        id: 'steamWorkshop' as const,
+        label: tOrDefault(t, 'settings.menu.steamWorkshop', '创意工坊'),
+        icon: `${iconBasePath}/Steam_icon_logo.png`,
+      },
+    ],
+    [t, iconBasePath]
+  );
+}

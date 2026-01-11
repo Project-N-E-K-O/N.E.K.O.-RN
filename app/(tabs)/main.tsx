@@ -8,10 +8,16 @@ import { useLive2DPreferences } from '@/hooks/useLive2DPreferences';
 import { mainManager } from '@/utils/MainManager';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Dimensions, Platform, StyleSheet, Text, View } from 'react-native';
 import { ReactNativeLive2dView } from 'react-native-live2d';
-// 引入同步后的 ChatContainer 组件（可选：如果需要完整的聊天 UI）
-// import { ChatContainer } from '@project_neko/components';
+import { 
+  Live2DRightToolbar, 
+  ChatContainer,
+  type Live2DRightToolbarPanel,
+  type Live2DSettingsToggleId,
+  type Live2DSettingsState,
+  type Live2DAgentToggleId,
+} from '@project_neko/components';
 
 interface MainUIScreenProps { }
 
@@ -21,13 +27,26 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
   const [isPageFocused, setIsPageFocused] = useState(true);
   const { config } = useDevConnectionConfig();
 
-  // Agent Backend 管理
+  // 工具栏状态管理（与 Web 版本一致）
+  const [isMobile, setIsMobile] = useState(true); // RN 默认为移动端
+  const [toolbarGoodbyeMode, setToolbarGoodbyeMode] = useState(false);
+  const [toolbarMicEnabled, setToolbarMicEnabled] = useState(false);
+  const [toolbarScreenEnabled, setToolbarScreenEnabled] = useState(false);
+  const [toolbarOpenPanel, setToolbarOpenPanel] = useState<Live2DRightToolbarPanel>(null);
+  const [toolbarSettings, setToolbarSettings] = useState<Live2DSettingsState>({
+    mergeMessages: true,
+    allowInterrupt: true,
+    proactiveChat: false,
+    proactiveVision: false,
+  });
+
+  // Agent Backend 管理（传入 openPanel 以支持动态刷新）
   const { agent, onAgentChange, refreshAgentState } = useLive2DAgentBackend({
     apiBase: `http://${config.host}:${config.port}`,
     showToast: (message, duration) => {
       Alert.alert('提示', message);
     },
-    openPanel: null, // 可以根据 UI 状态动态设置
+    openPanel: toolbarOpenPanel === 'agent' ? 'agent' : null,
   });
 
   // Live2D Preferences 持久化
@@ -179,10 +198,57 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
     mainManager.onLive2DTap();
   }, []);
 
-  // Agent 控制按钮示例
-  const handleToggleAgent = useCallback(() => {
-    onAgentChange('master', !agent.master);
-  }, [agent.master, onAgentChange]);
+  // 工具栏事件处理（与 Web 版本一致）
+  const handleToolbarSettingsChange = useCallback((id: Live2DSettingsToggleId, next: boolean) => {
+    setToolbarSettings((prev) => ({ ...prev, [id]: next }));
+  }, []);
+
+  const handleToolbarAgentChange = useCallback((id: Live2DAgentToggleId, next: boolean) => {
+    onAgentChange(id, next);
+  }, [onAgentChange]);
+
+  const handleToggleMic = useCallback((next: boolean) => {
+    setToolbarMicEnabled(next);
+    if (next) {
+      mainManager.toggleRecording();
+    } else {
+      mainManager.toggleRecording();
+    }
+  }, []);
+
+  const handleToggleScreen = useCallback((next: boolean) => {
+    setToolbarScreenEnabled(next);
+    // TODO: 实现屏幕分享功能
+  }, []);
+
+  const handleGoodbye = useCallback(() => {
+    setToolbarGoodbyeMode(true);
+    setToolbarOpenPanel(null);
+  }, []);
+
+  const handleReturn = useCallback(() => {
+    setToolbarGoodbyeMode(false);
+  }, []);
+
+  const handleSettingsMenuClick = useCallback((id: string) => {
+    // RN 中可以导航到对应页面
+    Alert.alert('功能提示', `即将打开: ${id}`);
+  }, []);
+
+  // 检测屏幕尺寸变化
+  useEffect(() => {
+    const updateIsMobile = () => {
+      const { width } = Dimensions.get('window');
+      setIsMobile(width <= 768);
+    };
+
+    updateIsMobile();
+    const subscription = Dimensions.addEventListener('change', updateIsMobile);
+    
+    return () => {
+      subscription?.remove();
+    };
+  }, []);
 
   // 显示 Agent 状态（调试用）
   useEffect(() => {
@@ -196,8 +262,9 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
 
   return (
     <View style={styles.container}>
+      {/* Live2D 舞台区域 */}
       <View style={styles.live2dContainer}>
-        {/* 页面获得焦点时渲染 Live2D，使用优化过的 live2dProps 避免不必要的重新渲染 */}
+        {/* 页面获得焦点时渲染 Live2D */}
         {isPageFocused && (
           <ReactNativeLive2dView
             style={styles.live2dView}
@@ -216,52 +283,67 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
           </View>
         )}
       </View>
-      <View style={styles.chatContainer}>
-        <ScrollView style={styles.messagesScrollView} showsVerticalScrollIndicator={false}>
-          {chat.messages.length === 0 ? (
-            <Text style={styles.chatText}>Chat</Text>
-          ) : (
-            chat.messages.slice(-5).map((message) => (
-              <View key={message.id}>
-                <Text style={styles.chatText}>{message.text}</Text>
-              </View>
-            ))
-          )}
-        </ScrollView>
-        <View style={styles.buttonContainer}>
-          <Pressable
-            style={({ pressed }) => [
-              styles.button,
-              styles.buttonIdle,
-              pressed && styles.buttonPressed,
-            ]} onPress={handleLoadModel}>
-            <Text style={styles.buttonText}>加载模型</Text>
-          </Pressable>
-          <Pressable
-            style={({ pressed }) => [
-              styles.button,
-              audio.isRecording ? styles.buttonRecording : styles.buttonIdle,
-              pressed && styles.buttonPressed,
-              !audio.isConnected && styles.buttonDisabled
-            ]}
-            onPress={handleRecordingToggle}
-          >
-            <Text style={styles.buttonText}>{audio.isRecording ? '🎤 停止录音' : '🎤 开始聊天'}</Text>
-          </Pressable>
-          <Pressable
-            style={({ pressed }) => [
-              styles.button,
-              agent.master ? styles.buttonAgent : styles.buttonIdle,
-              pressed && styles.buttonPressed,
-            ]}
-            onPress={handleToggleAgent}
-          >
-            <Text style={styles.buttonText}>
-              {agent.master ? '🤖 Agent ON' : '🤖 Agent OFF'}
-            </Text>
-          </Pressable>
-          <Text style={styles.statusText}>{agent.statusText}</Text>
-        </View>
+
+      {/* 
+        【跨平台组件】Live2DRightToolbar 右侧工具栏
+        
+        策略更新（2026-01-11）：
+        - 已实现 RN 原生版本（Live2DRightToolbar.native.tsx）
+        - 使用共享的类型和业务逻辑（types.ts + hooks.ts）
+        - Metro Bundler 自动根据平台选择：
+          * Web: Live2DRightToolbar.tsx（HTML/CSS 完整版）
+          * Android/iOS: Live2DRightToolbar.native.tsx（Modal 简化版）
+        - 详见：docs/CROSS-PLATFORM-COMPONENT-STRATEGY.md
+        
+        功能包括：
+        - 麦克风/屏幕共享切换
+        - Agent 设置面板
+        - Settings 面板
+        - 设置菜单（Live2D设置、API密钥、角色管理等）
+      */}
+      <View style={styles.toolbarContainer}>
+        <Live2DRightToolbar
+          visible
+          isMobile={isMobile}
+          right={isMobile ? 12 : 24}
+          top={isMobile ? 12 : 24}
+          micEnabled={toolbarMicEnabled}
+          screenEnabled={toolbarScreenEnabled}
+          goodbyeMode={toolbarGoodbyeMode}
+          openPanel={toolbarOpenPanel}
+          onOpenPanelChange={setToolbarOpenPanel}
+          settings={toolbarSettings}
+          onSettingsChange={handleToolbarSettingsChange}
+          agent={agent}
+          onAgentChange={handleToolbarAgentChange}
+          onToggleMic={handleToggleMic}
+          onToggleScreen={handleToggleScreen}
+          onGoodbye={handleGoodbye}
+          onReturn={handleReturn}
+          onSettingsMenuClick={handleSettingsMenuClick}
+        />
+      </View>
+
+      {/* 
+        【跨平台组件】ChatContainer 聊天容器
+        
+        策略更新（2026-01-11）：
+        - ✅ 已实现 RN 原生版本（ChatContainer.native.tsx）
+        - ✅ 使用共享的类型和业务逻辑（types.ts + hooks.ts）
+        - Metro Bundler 自动根据平台选择：
+          * Web: ChatContainer.tsx（HTML/CSS 完整版，支持截图）
+          * Android/iOS: ChatContainer.native.tsx（Modal 简化版）
+        - 详见：docs/CROSS-PLATFORM-COMPONENT-STRATEGY.md
+        
+        功能包括：
+        - 浮动按钮（缩小态）
+        - 聊天面板（展开态）
+        - 消息列表（用户/系统/助手角色）
+        - 文本输入
+        - Web 平台支持截图功能
+      */}
+      <View style={styles.chatContainerWrapper}>
+        <ChatContainer />
       </View>
     </View>
   );
@@ -270,17 +352,13 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 32,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#000',
   },
   live2dContainer: {
-    height: 600,
-    borderColor: 'red',
-    borderWidth: 1,
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#000',
   },
   live2dView: {
     flex: 1,
@@ -296,60 +374,18 @@ const styles = StyleSheet.create({
     color: '#666',
     fontSize: 16,
   },
-  chatContainer: {
+  toolbarContainer: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    zIndex: 1000,
+  },
+  chatContainerWrapper: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    height: 400,
-    justifyContent: 'space-between',
-    paddingTop: 16,
-  },
-  messagesScrollView: {
-    maxHeight: 150,
-    paddingHorizontal: 16,
-    marginBottom: 8,
-  },
-  chatText: {
-    color: '#fff',
-    fontSize: 16,
-  },
-  buttonContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-  },
-  button: {
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  buttonIdle: {
-    backgroundColor: '#333',
-  },
-  buttonRecording: {
-    backgroundColor: '#FF3B30',
-  },
-  buttonPressed: {
-    opacity: 0.7,
-  },
-  buttonDisabled: {
-    backgroundColor: '#999',
-    opacity: 0.5,
-  },
-  buttonAgent: {
-    backgroundColor: '#007AFF',
-  },
-  statusText: {
-    color: '#fff',
-    fontSize: 12,
-    marginTop: 8,
-    textAlign: 'center',
+    zIndex: 100,
   },
 });
 

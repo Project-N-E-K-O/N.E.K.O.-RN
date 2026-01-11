@@ -17,16 +17,19 @@ export interface StatusToastProps {
 }
 
 const trimTrailingSlash = (url?: string) => (url ? url.replace(/\/+$/, "") : "");
+
+/**
+ * 跨平台安全地解析静态资源基址
+ * - Web: 从 window 对象获取（由 index.html 或构建注入）
+ * - React Native: 需要通过 props 传入 staticBaseUrl
+ */
 const resolveStaticBase = (): string => {
   try {
-    const env = (import.meta as any)?.env ?? {};
     const w = typeof window !== "undefined" ? (window as any) : {};
     return (
       trimTrailingSlash(
         w.STATIC_SERVER_URL ||
           w.API_BASE_URL ||
-          env.VITE_STATIC_SERVER_URL ||
-          env.VITE_API_BASE_URL ||
           ""
       ) || ""
     );

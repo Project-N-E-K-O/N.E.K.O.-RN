@@ -1,116 +1,65 @@
-import React, { useState } from "react";
-import type { ChatMessage, PendingScreenshot } from "./types";
+import React from "react";
 import MessageList from "./MessageList";
 import ChatInput from "./ChatInput";
 import { useT, tOrDefault } from "../i18n";
+import { useChatState, useSendMessage, useWebScreenshot } from "./hooks";
 
-/** 生成跨环境安全的 id */
-function generateId(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
-
+/**
+ * ChatContainer - Web 版本
+ * 
+ * 使用 HTML/CSS 实现的聊天界面：
+ * - 浮动按钮（缩小态）
+ * - 完整聊天框（展开态）
+ * - 支持 Web 截图功能（navigator.mediaDevices）
+ * 
+ * @platform Web - 完整实现
+ * @see ChatContainer.native.tsx - RN 版本（Modal 实现）
+ */
 export default function ChatContainer() {
   const t = useT();
 
-  /** 是否缩小 */
-  const [collapsed, setCollapsed] = useState(false);
+  // 使用共享的状态管理
+  const {
+    collapsed,
+    setCollapsed,
+    messages,
+    setMessages,
+    addMessages,
+    pendingScreenshots,
+    setPendingScreenshots,
+  } = useChatState();
 
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: "sys-1",
-      role: "system",
-      content: tOrDefault(
-        t,
-        "chat.welcome",
-        "欢迎来到 React 聊天系统（迁移 Demo）"
-      ),
-      createdAt: Date.now(),
-    },
-  ]);
-
-  const [pendingScreenshots, setPendingScreenshots] =
-    useState<PendingScreenshot[]>([]);
-
-  function handleSendText(text: string) {
-    if (!text.trim() && pendingScreenshots.length === 0) return;
-
-    const newMessages: ChatMessage[] = [];
-    let timestamp = Date.now();
-
-    pendingScreenshots.forEach((p) => {
-      newMessages.push({
-        id: generateId(),
-        role: "user",
-        image: p.base64,
-        createdAt: timestamp++,
-      });
-    });
-
-    if (text.trim()) {
-      newMessages.push({
-        id: generateId(),
-        role: "user",
-        content: text,
-        createdAt: timestamp,
-      });
-    }
-
-    setMessages((prev) => [...prev, ...newMessages]);
-    setPendingScreenshots([]);
-  }
-
-  async function handleScreenshot() {
-    if (!navigator.mediaDevices?.getDisplayMedia) {
-      alert(
-        tOrDefault(
-          t,
-          "chat.screenshot.unsupported",
-          "您的浏览器不支持截图"
-        )
-      );
-      return;
-    }
-
-    let stream: MediaStream | null = null;
-    const video = document.createElement("video");
-
-    try {
-      stream = await navigator.mediaDevices.getDisplayMedia({
-        video: true,
-        audio: false,
-      });
-      video.srcObject = stream;
-      await video.play();
-
-      const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        alert(tOrDefault(t, "chat.screenshot.failed", "截图失败"));
-        return;
-      }
-
-      ctx.drawImage(video, 0, 0);
-      const base64 = canvas.toDataURL("image/png");
-
-      setPendingScreenshots((prev) => [
-        ...prev,
-        { id: generateId(), base64 },
+  // 初始化欢迎消息
+  React.useEffect(() => {
+    if (messages.length === 0) {
+      setMessages([
+        {
+          id: "sys-1",
+          role: "system",
+          content: tOrDefault(
+            t,
+            "chat.welcome",
+            "欢迎来到 React 聊天系统（迁移 Demo）"
+          ),
+          createdAt: Date.now(),
+        },
       ]);
-    } finally {
-      if (stream) stream.getTracks().forEach((track) => track.stop());
-      video.srcObject = null;
     }
-  }
+  }, [messages.length, setMessages, t]);
+
+  // 发送消息逻辑
+  const { handleSendText } = useSendMessage(
+    addMessages,
+    pendingScreenshots,
+    () => setPendingScreenshots([])
+  );
+
+  // Web 截图功能
+  const { handleScreenshot } = useWebScreenshot(
+    setPendingScreenshots,
+    () => alert(tOrDefault(t, "chat.screenshot.unsupported", "您的浏览器不支持截图")),
+    () => alert(tOrDefault(t, "chat.screenshot.failed", "截图失败"))
+  );
 
   /** ================= 缩小态：左下角按钮（button，支持键盘） ================= */
   if (collapsed) {

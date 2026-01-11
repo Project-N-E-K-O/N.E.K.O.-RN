@@ -4,7 +4,13 @@
 
 ## 📚 规范文档体系 (Spec-Driven Docs)
 
-本项目采用 **SDD (Spec-Driven Development)** 规范驱动开发模式。文档按功能模块化划分，作为 AI 与人类协作的“单一真理源”。
+本项目采用 **SDD (Spec-Driven Development)** 规范驱动开发模式。文档按功能模块化划分，作为 AI 与人类协作的"单一真理源"。
+
+### 0. 开发策略（重要）⭐
+- **[RN 开发策略](./RN-DEVELOPMENT-STRATEGY.md)**：**优先使用 React/Web 组件**，渐进式迁移方案（必读）
+- **[跨平台组件策略](./CROSS-PLATFORM-COMPONENT-STRATEGY.md)**：同时支持 Web 和 RN 的组件实现方案（进阶）
+- **[快速参考卡片](./QUICK-REFERENCE.md)**：开发时的速查手册（推荐收藏）
+- [策略变更日志](./CHANGELOG-STRATEGY.md)：策略调整的详细记录
 
 ### 1. 核心概述 (Core)
 - [系统概述](./core/overview.md)：项目使命、技术能力与技术栈。
@@ -21,6 +27,12 @@
 
 ### 4. 开发指南 (Guides)
 - [开发与验收](./guide/development.md)：硬编码约束、环境配置与验收清单。
+- **[Android 平台运行指南](./ANDROID-PLATFORM-GUIDE.md)**：Android 环境配置、构建、运行和调试（⭐ Android 开发者必读）
+
+### 5. 同步与迁移文档
+- **[Web 到 RN 同步报告](./webapp-to-rn-sync-2026-01-10.md)**：Agent Backend、Preferences、UI 组件同步记录
+- [上游 packages 同步](./SYNC-SUMMARY-2026-01-10.md)：@project_neko/* 包的同步状态
+- [包差异报告](./upstream-packages-diff-report.md)：Web 与 RN 包的差异对比
 
 ## 🔗 上游公共文档（N.E.K.O）
 
@@ -30,3 +42,4 @@
 1. **先设计后代码**：重大功能前必须先在 `/docs` 中更新相关 Spec。
 2. **模块化维护**：避免在单体文件中堆积逻辑，按功能域进行分割。
 3. **闭环验证**：功能的验收应严格对齐文档中描述的规格。
+4. **渐进式迁移**：优先使用 Web 组件快速实现功能，参考 [RN 开发策略](./RN-DEVELOPMENT-STRATEGY.md)。

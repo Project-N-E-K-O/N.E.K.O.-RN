@@ -13,7 +13,12 @@
 1. ✅ Agent Backend 管理（useLive2DAgentBackend）
 2. ✅ Live2D Preferences 持久化（useLive2DPreferences）
 3. ✅ ChatContainer 组件集成准备
-4. ⏳ Live2DRightToolbar UI（需要单独的 RN 实现）
+4. ✅ Live2DRightToolbar UI（**使用 Web 版本**）
+
+> **开发策略说明**（2026-01-11 更新）：
+> 
+> 采用**渐进式迁移策略** - 优先使用 React/Web 组件快速完善功能展示，
+> 通过 `Platform.OS === 'web'` 条件渲染实现。详见 [RN-DEVELOPMENT-STRATEGY.md](./RN-DEVELOPMENT-STRATEGY.md)
 
 ---
 
@@ -142,7 +147,7 @@ statusText: {
 | **Agent Backend** | useLive2DAgentBackend | useLive2DAgentBackend | ✅ 已同步 |
 | **Preferences** | API (/api/config/preferences) | AsyncStorage | ✅ 已同步 |
 | **ChatContainer** | @project_neko/components | 简单聊天显示 | ⏳ 准备中 |
-| **Live2DRightToolbar** | Web UI 组件 | 需要 RN 实现 | ⏳ 待实现 |
+| **Live2DRightToolbar** | Web UI 组件 | **使用 Web 版本** | ✅ Web 模式 |
 | **拖拽/缩放** | Canvas pointer events | 原生手势 | ✅ 已有 |
 | **国际化** | i18next + useT hook | 可选 t 函数 | ✅ 已适配 |
 
@@ -225,28 +230,51 @@ import { ChatContainer } from '@project_neko/components';
 </View>
 ```
 
-#### 3. Live2DRightToolbar 实现
-Web 版本的 `Live2DRightToolbar` 是一个复杂的 Web UI 组件，包含：
+#### 3. Live2DRightToolbar 实现 ✅
+
+**策略更新（2026-01-11）**：采用 **Web 组件优先策略**
+
+`Live2DRightToolbar` 是一个复杂的 Web UI 组件，包含：
 - 麦克风/屏幕共享切换
 - Agent 设置面板
 - Settings 面板
 - 设置菜单
 
-**RN 实现建议**：
+**当前实现方案**：
+- ✅ 使用 Web 版本组件（已在 `@project_neko/components` 中同步）
+- ✅ 通过 `Platform.OS === 'web'` 条件渲染
+- ✅ 利用 Expo 的 Web 构建目标支持
+
+**实现示例**：
+```typescript
+// app/(tabs)/main.tsx
+import { Platform } from 'react-native';
+import { Live2DRightToolbar } from '@project_neko/components';
+
+{/* Web 组件 - 条件渲染 */}
+{Platform.OS === 'web' && (
+  <View style={styles.toolbarContainer}>
+    <Live2DRightToolbar
+      visible
+      isMobile={isMobile}
+      {...toolbarProps}
+    />
+  </View>
+)}
+```
+
+**优势**：
+- ⚡ 快速实现功能完整性
+- 🔒 复用已测试的成熟组件
+- 🔄 保留未来 Native 优化的扩展空间
+
+**未来优化方向**（可选）：
+如果需要原生化，可考虑：
 - 使用 React Native 的 `Modal` 或底部抽屉（Bottom Sheet）
 - 拆分为多个子组件：`AgentPanel`, `SettingsPanel`, `MenuPanel`
 - 使用 React Native 的 `Switch` 和 `Button` 组件
 
-**组件结构建议**：
-```
-components/
-  Live2DToolbar/
-    Live2DToolbar.tsx          # 主入口
-    AgentPanel.tsx             # Agent 设置面板
-    SettingsPanel.tsx          # 通用设置面板
-    MenuPanel.tsx              # 菜单面板
-    styles.ts                  # 样式
-```
+详见：[RN-DEVELOPMENT-STRATEGY.md](./RN-DEVELOPMENT-STRATEGY.md)
 
 ---
 
@@ -373,9 +401,10 @@ AsyncStorage 有大小限制（约 6MB），偏好设置数据较小不会有问
 
 **后续工作**：
 - ⏳ Live2D Preferences 与 useLive2D 集成
-- ⏳ ChatContainer 组件集成
-- ⏳ Live2DRightToolbar RN 实现
+- ⏳ ChatContainer 组件集成验证
+- ✅ Live2DRightToolbar（使用 Web 版本）
 - ⏳ 完整的集成测试
+- 📋 参考 [RN 开发策略文档](./RN-DEVELOPMENT-STRATEGY.md) 进行后续优化
 
 ---
 
