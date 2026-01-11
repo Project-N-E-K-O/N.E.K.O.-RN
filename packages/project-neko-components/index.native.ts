@@ -32,7 +32,9 @@ export type { QrMessageBoxProps } from "./src/QrMessageBox";
 export * from "./src/Live2DRightToolbar";
 
 // ChatContainer 现已支持 RN（使用 .native.tsx）
-export * from "./src/chat";
+// 注意：只导出 ChatContainer，ChatInput 和 MessageList 仅 Web 可用（使用 HTML 元素）
+export { ChatContainer } from "./src/chat";
+export type { ChatMessage, PendingScreenshot } from "./src/chat";
 
 // i18n adapter (Provider -> window.t -> fallback)
 export { I18nProvider, useT, tOrDefault } from "./src/i18n";

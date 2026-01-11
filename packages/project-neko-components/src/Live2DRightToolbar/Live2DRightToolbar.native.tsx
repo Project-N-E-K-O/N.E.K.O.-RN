@@ -56,7 +56,7 @@ export function Live2DRightToolbar({
   // 使用共享的面板切换逻辑
   const { togglePanel } = usePanelToggle(openPanel, onOpenPanelChange);
 
-  // 使用共享的按钮配置（RN 使用远程图标 URL）
+  // 使用共享的按钮配置（RN 使用本地 require() 资源）
   const buttons = useToolbarButtons({
     micEnabled,
     screenEnabled,
@@ -68,8 +68,14 @@ export function Live2DRightToolbar({
     onGoodbye,
     togglePanel,
     t,
-    // TODO: 配置实际的图标 URL 或使用本地资源
-    iconBasePath: 'http://your-server.com/static/icons',
+    // RN: 使用本地打包的图标资源（确保这些文件存在于 assets/icons/）
+    icons: {
+      mic: require('../../../assets/icons/mic_icon_off.png'),
+      screen: require('../../../assets/icons/screen_icon_off.png'),
+      agent: require('../../../assets/icons/Agent_off.png'),
+      settings: require('../../../assets/icons/set_off.png'),
+      goodbye: require('../../../assets/icons/rest_off.png'),
+    },
   });
 
   // 使用共享的 toggle rows 配置
@@ -89,7 +95,7 @@ export function Live2DRightToolbar({
             activeOpacity={0.7}
           >
             <Image
-              source={{ uri: 'http://your-server.com/static/icons/rest_off.png' }}
+              source={require('../../../assets/icons/rest_off.png')}
               style={styles.icon}
             />
           </TouchableOpacity>
@@ -101,7 +107,7 @@ export function Live2DRightToolbar({
               onPress={button.onClick}
               activeOpacity={0.7}
             >
-              <Image source={{ uri: button.icon }} style={styles.icon} />
+              <Image source={button.icon} style={styles.icon} />
             </TouchableOpacity>
           ))
         )}
@@ -144,7 +150,7 @@ export function Live2DRightToolbar({
                   style={styles.closeButton}
                   onPress={() => onOpenPanelChange(null)}
                 >
-                  <Text style={styles.closeButtonText}>关闭</Text>
+                  <Text style={styles.closeButtonText}>{t('close')}</Text>
                 </TouchableOpacity>
               </View>
             </TouchableWithoutFeedback>
@@ -163,7 +169,7 @@ export function Live2DRightToolbar({
           <View style={styles.modalOverlay}>
             <TouchableWithoutFeedback>
               <View style={styles.panelContainer}>
-                <Text style={styles.panelTitle}>设置</Text>
+                <Text style={styles.panelTitle}>{t('settings')}</Text>
 
                 <ScrollView style={styles.scrollView}>
                   {/* Settings Toggles */}
@@ -187,37 +193,37 @@ export function Live2DRightToolbar({
                         style={styles.menuItem}
                         onPress={() => onSettingsMenuClick?.('live2dSettings')}
                       >
-                        <Text style={styles.menuItemText}>Live2D设置</Text>
+                        <Text style={styles.menuItemText}>{t('live2dSettings')}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={styles.menuItem}
                         onPress={() => onSettingsMenuClick?.('apiKeys')}
                       >
-                        <Text style={styles.menuItemText}>API密钥</Text>
+                        <Text style={styles.menuItemText}>{t('apiKeys')}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={styles.menuItem}
                         onPress={() => onSettingsMenuClick?.('characterManage')}
                       >
-                        <Text style={styles.menuItemText}>角色管理</Text>
+                        <Text style={styles.menuItemText}>{t('characterManage')}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={styles.menuItem}
                         onPress={() => onSettingsMenuClick?.('voiceClone')}
                       >
-                        <Text style={styles.menuItemText}>声音克隆</Text>
+                        <Text style={styles.menuItemText}>{t('voiceClone')}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={styles.menuItem}
                         onPress={() => onSettingsMenuClick?.('memoryBrowser')}
                       >
-                        <Text style={styles.menuItemText}>记忆浏览</Text>
+                        <Text style={styles.menuItemText}>{t('memoryBrowser')}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={styles.menuItem}
                         onPress={() => onSettingsMenuClick?.('steamWorkshop')}
                       >
-                        <Text style={styles.menuItemText}>创意工坊</Text>
+                        <Text style={styles.menuItemText}>{t('steamWorkshop')}</Text>
                       </TouchableOpacity>
                     </>
                   )}
@@ -227,7 +233,7 @@ export function Live2DRightToolbar({
                   style={styles.closeButton}
                   onPress={() => onOpenPanelChange(null)}
                 >
-                  <Text style={styles.closeButtonText}>关闭</Text>
+                  <Text style={styles.closeButtonText}>{t('close')}</Text>
                 </TouchableOpacity>
               </View>
             </TouchableWithoutFeedback>

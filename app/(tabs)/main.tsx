@@ -210,11 +210,11 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
   const handleToggleMic = useCallback((next: boolean) => {
     setToolbarMicEnabled(next);
     if (next) {
-      mainManager.toggleRecording();
+      mainManager.startRecording();
     } else {
-      mainManager.toggleRecording();
+      mainManager.stopRecording();
     }
-  }, []);
+  }, [mainManager]);
 
   const handleToggleScreen = useCallback((next: boolean) => {
     setToolbarScreenEnabled(next);

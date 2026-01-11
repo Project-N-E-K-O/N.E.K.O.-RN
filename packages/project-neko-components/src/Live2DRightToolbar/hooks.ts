@@ -77,7 +77,10 @@ export function usePanelToggle(
 }
 
 /**
- * 按钮配置（Web 和 RN 共享，但图标路径可能不同）
+ * 按钮配置（Web 和 RN 共享，但图标资源类型不同）
+ * 
+ * @param iconBasePath - Web: 字符串路径前缀 (如 '/static/icons')
+ * @param icons - RN: 本地 require() 资源映射表
  */
 export function useToolbarButtons({
   micEnabled,
@@ -90,7 +93,8 @@ export function useToolbarButtons({
   onGoodbye,
   togglePanel,
   t,
-  iconBasePath = '/static/icons', // RN 可覆盖
+  iconBasePath = '/static/icons', // Web 使用
+  icons, // RN 使用 require() 资源
 }: {
   micEnabled: boolean;
   screenEnabled: boolean;
@@ -103,6 +107,13 @@ export function useToolbarButtons({
   togglePanel: (panel: Exclude<Live2DRightToolbarPanel, null>) => void;
   t?: TFunction;
   iconBasePath?: string;
+  icons?: {
+    mic: any;
+    screen: any;
+    agent: any;
+    settings: any;
+    goodbye: any;
+  };
 }): ToolbarButton[] {
   return useMemo(
     () =>
@@ -113,7 +124,7 @@ export function useToolbarButtons({
           hidden: false,
           active: micEnabled,
           onClick: () => onToggleMic(!micEnabled),
-          icon: `${iconBasePath}/mic_icon_off.png`,
+          icon: icons?.mic ?? `${iconBasePath}/mic_icon_off.png`,
         },
         {
           id: 'screen' as const,
@@ -121,7 +132,7 @@ export function useToolbarButtons({
           hidden: false,
           active: screenEnabled,
           onClick: () => onToggleScreen(!screenEnabled),
-          icon: `${iconBasePath}/screen_icon_off.png`,
+          icon: icons?.screen ?? `${iconBasePath}/screen_icon_off.png`,
         },
         {
           id: 'agent' as const,
@@ -129,7 +140,7 @@ export function useToolbarButtons({
           hidden: Boolean(isMobile),
           active: openPanel === 'agent',
           onClick: () => togglePanel('agent'),
-          icon: `${iconBasePath}/Agent_off.png`,
+          icon: icons?.agent ?? `${iconBasePath}/Agent_off.png`,
           hasPanel: true,
         },
         {
@@ -138,7 +149,7 @@ export function useToolbarButtons({
           hidden: false,
           active: openPanel === 'settings',
           onClick: () => togglePanel('settings'),
-          icon: `${iconBasePath}/set_off.png`,
+          icon: icons?.settings ?? `${iconBasePath}/set_off.png`,
           hasPanel: true,
         },
         {
@@ -147,11 +158,11 @@ export function useToolbarButtons({
           hidden: Boolean(isMobile),
           active: goodbyeMode,
           onClick: onGoodbye,
-          icon: `${iconBasePath}/rest_off.png`,
+          icon: icons?.goodbye ?? `${iconBasePath}/rest_off.png`,
           hasPanel: false,
         },
       ].filter((b) => !b.hidden),
-    [goodbyeMode, isMobile, micEnabled, onGoodbye, onToggleMic, onToggleScreen, openPanel, screenEnabled, t, togglePanel, iconBasePath]
+    [goodbyeMode, isMobile, micEnabled, onGoodbye, onToggleMic, onToggleScreen, openPanel, screenEnabled, t, togglePanel, iconBasePath, icons]
   );
 }
 
