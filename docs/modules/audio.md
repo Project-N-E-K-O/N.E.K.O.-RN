@@ -22,7 +22,8 @@
 
 > 说明（迁移后差异）：
 > - **下行播放不再由上层手动调用 `playPCMData`**：二进制消息会被 `@project_neko/audio-service` 在 Realtime 的 `binary` 事件里自动播放。
-> - `playPCMData` 仅作为历史兼容入口保留，主链路请勿再调用（避免双重播放）。
+> - `playPCMData` 仅作为历史兼容入口保留（在 `AudioService` 内部），主链路请勿再调用（避免双重播放）。
+> - `hooks/useAudio.ts` **已不再对外暴露** `playPCMData`（避免误用）；如确需兼容调用，请直接使用 `audio.audioService?.playPCMData(...)` 并接受其弃用警告。
 
 ## 3.3 性能规格
 - **上行延迟**：目标单位切片 < 40ms。

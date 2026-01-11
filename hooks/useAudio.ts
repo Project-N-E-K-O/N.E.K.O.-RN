@@ -9,7 +9,24 @@ interface UseAudioConfig {
   onConnectionChange?: (isConnected: boolean) => void;
 }
 
-export const useAudio = (config: UseAudioConfig) => {
+export interface UseAudioReturn {
+  // 状态
+  isConnected: boolean;
+  isRecording: boolean;
+  connectionStatus: string;
+  audioStats: AudioStats;
+
+  // 方法
+  toggleRecording: () => Promise<void>;
+  clearAudioQueue: () => void;
+  handleUserSpeechDetection: () => void;
+  sendMessage: (message: string | object) => void;
+
+  // 原始 Service 引用（供高级用户使用）
+  audioService: AudioService | null;
+}
+
+export const useAudio = (config: UseAudioConfig): UseAudioReturn => {
   // 状态管理
   const [isConnected, setIsConnected] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -35,11 +52,6 @@ export const useAudio = (config: UseAudioConfig) => {
     }
 
     await audioServiceRef.current.toggleRecording();
-  };
-
-  // 播放 PCM 音频数据
-  const playPCMData = async (arrayBuffer: ArrayBuffer) => {
-    await audioServiceRef.current?.playPCMData(arrayBuffer);
   };
 
   // 清空音频队列
@@ -111,7 +123,6 @@ export const useAudio = (config: UseAudioConfig) => {
     
     // 方法
     toggleRecording,
-    playPCMData,
     clearAudioQueue,
     handleUserSpeechDetection,
     sendMessage,

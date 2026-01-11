@@ -282,7 +282,7 @@ export class Live2DService {
 
     if (!modelFile.exists) {
       console.log('📥 模型文件不存在，开始下载...');
-      await File.downloadFileAsync(remoteModel3JsonUrl, modelDir as any);
+      await File.downloadFileAsync(remoteModel3JsonUrl, modelDir);
       console.log('✅ 模型文件下载完成');
     } else {
       console.log('✅ 模型文件已存在');
