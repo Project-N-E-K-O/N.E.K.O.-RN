@@ -39,9 +39,9 @@ import {
 ### ⚠️ 需要 Native 实现
 
 ```typescript
-// 这些组件必须有 Native 版本
-import { Live2DView } from '@/packages/react-native-live2d';
-import { AudioPlayer } from '@/services/audio';
+// 这些能力必须有 Native/平台实现
+import { ReactNativeLive2dView } from 'react-native-live2d';
+import { AudioService } from '@/services/AudioService';
 ```
 
 ### 📋 组件分类表
@@ -56,6 +56,29 @@ import { AudioPlayer } from '@/services/audio';
 | `StatusToast` | Web | ✅ | 提示气泡（Web 优先） |
 
 ---
+
+## 🧩 RN 主界面依赖现状（`app/(tabs)/main.tsx`）
+
+### ✅ 当前已使用
+
+- **UI（跨平台组件）**：`@project_neko/components`（`Live2DRightToolbar`、`ChatContainer`）
+- **Live2D 原生渲染**：`react-native-live2d`（`ReactNativeLive2dView`）
+- **HTTP 请求（跨平台通用）**：`@project_neko/request`（用于 Agent API：health/flags/availability/admin control）
+- **WebSocket（跨平台通用）**：`@project_neko/realtime`（用于 `/ws/{characterName}`：音频流 + 文本消息）
+- **业务能力（RN 内部实现）**：
+  - `hooks/useLive2D.ts` + `services/Live2DService.ts`：模型下载/缓存/props 聚合（`modelPath/scale/position/...`）；并在内部复用跨平台内核 `@project_neko/live2d-service`
+  - `hooks/useAudio.ts` + `services/AudioService.ts`：音频录制/播放与 WebSocket 交互（底层由 `services/wsService.ts` 统一封装）
+  - `hooks/useLive2DAgentBackend.ts`：通过 `@project_neko/request` 的 client 调 Agent API（统一替代直接 `fetch`）
+
+### ❌ 当前未使用（主界面链路内）
+
+以下 packages **在 `main.tsx` 的调用链里未使用**（即未作为主界面的依赖来源）：
+
+- ~~`packages/project-neko-audio-service`~~ ✅ **已接入**（通过 `@project_neko/audio-service`，由 `hooks/useAudio.ts` 间接使用）
+
+> 更新：`packages/project-neko-live2d-service` ✅ **已接入**（通过 `@project_neko/live2d-service`，由 `services/Live2DService.ts` 间接使用）。
+
+> 备注：仓库内仍有 `@project_neko/request` 的使用示例（如 `app/webapp.tsx`、`app/request-lab.tsx`）；主界面链路通过 hooks/services 间接接入（见上）。
 
 ## 🔧 开发工作流
 
@@ -198,6 +221,13 @@ npm test
 
 ### Q1: Web 组件在 Native 不显示？
 **A**: 检查是否添加了 `Platform.OS === 'web'` 条件判断。
+
+### Q2: Android 进入 Live2D 页面模型不显示（黑屏/空白）？
+**A**: 先确认业务层是否触发了模型资源加载：
+
+- **必须触发**：`useLive2D.loadModel()`（建议放在页面 focus 时触发）
+- **快速判断**：看日志里 `<ReactNativeLive2dView />` 的 `modelPath` 是否一直是 `undefined`
+- **后端检查**：确认 Live2D 静态资源服务可访问（默认 `backendPort: 8081`）并能下载 `*.model3.json` 及依赖
 
 ### Q2: 类型报错？
 **A**: 确保使用 `import type` 分离类型导入（避免运行时错误）。

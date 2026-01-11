@@ -61,21 +61,9 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
     port: config.port,
     characterName: config.characterName,
     onMessage: async (event) => {
-      // 处理二进制音频数据
-      if (event.data instanceof Blob) {
-        try {
-          const arrayBuffer = await event.data.arrayBuffer();
-          console.log('收到 Blob 音频数据:', arrayBuffer.byteLength, '字节');
-          await audio.playPCMData(arrayBuffer);
-        } catch (e) {
-          console.warn('处理 Blob 音频失败:', e);
-        }
-        return;
-      } else if (event.data instanceof ArrayBuffer) {
-        console.log('收到 ArrayBuffer 音频数据:', event.data.byteLength, '字节');
-        await audio.playPCMData(event.data);
-        return;
-      }
+      // 二进制音频数据已由 @project_neko/audio-service 自动播放（通过 Realtime binary 事件接管）
+      // 这里仅保留文本消息处理逻辑
+      if (typeof event.data !== 'string') return;
 
       // 处理文本消息并通过 MainManager 协调
       const result = await chat.handleWebSocketMessage(event);
@@ -102,6 +90,7 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
     modelName: 'mao_pro',
     backendHost: config.host,
     backendPort: 8081,
+    // 由页面 focus 生命周期触发加载；避免 autoLoad + focus 双重触发导致重复加载
     autoLoad: false,
     // TODO: 集成 preferences repository 到 useLive2D hook
     // 这需要修改 useLive2D 以支持持久化
@@ -121,13 +110,15 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
       // 设置页面为焦点状态
       setIsPageFocused(true);
 
+      // 页面获得焦点时触发模型加载（若已在加载/已就绪，Service 内部会自动去重）
+      // 这里放在 focus 生命周期里，确保从其它 Tab 返回时也能恢复模型显示
+      live2d.loadModel();
+
       return () => {
         console.log('Live2D页面失去焦点');
-        // 停止口型同步
-        if (lipSync.isActive) {
-          lipSync.stop();
-          console.log('👄 口型同步已停止（页面失焦）');
-        }
+        // 停止口型同步（stop 应为幂等；避免把 isActive 放进依赖导致 focus effect 重跑）
+        lipSync.stop();
+        console.log('👄 口型同步已停止（页面失焦）');
         
         // 设置页面为失去焦点状态
         setIsPageFocused(false);
@@ -136,7 +127,7 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
         // 注意：原生视图会在 onDetachedFromWindow 中自动清理资源
         live2d.unloadModel();
       };
-    }, [live2d.unloadModel])
+    }, [live2d.loadModel, live2d.unloadModel, lipSync.stop])
   );
 
   // ===== 初始化 MainManager =====
@@ -168,23 +159,33 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
 
   // 监听模型状态，自动启动/停止口型同步
   useEffect(() => {
-    if (live2d.modelState.isReady && live2d.modelState.path) {
-      console.log('✅ Live2D 模型已加载，启动口型同步');
-      // 延迟启动以确保模型完全就绪
-      setTimeout(() => {
-        if (!lipSync.isActive) {
-          lipSync.start();
-          console.log('👄 口型同步已启动');
-        }
-      }, 500);
-    } else if (!live2d.modelState.isReady && !live2d.modelState.path) {
-      console.log('⏹️ Live2D 模型已卸载，停止口型同步');
-      if (lipSync.isActive) {
-        lipSync.stop();
-        console.log('👄 口型同步已停止');
+    const jsReady = live2d.modelState.isReady && !!live2d.modelState.path;
+    const nativeReady = live2d.isNativeModelLoaded;
+    const shouldRun = isPageFocused && jsReady && nativeReady;
+
+    if (shouldRun) {
+      if (!lipSync.isActive) {
+        console.log('✅ Live2D JS/Native 已就绪，启动口型同步');
+        lipSync.start();
+        console.log('👄 口型同步已启动');
       }
+      return;
     }
-  }, [live2d.modelState]);
+
+    if (lipSync.isActive) {
+      console.log('⏹️ Live2D 未就绪或页面失焦，停止口型同步');
+      lipSync.stop();
+      console.log('👄 口型同步已停止');
+    }
+  }, [
+    isPageFocused,
+    live2d.modelState.isReady,
+    live2d.modelState.path,
+    live2d.isNativeModelLoaded,
+    lipSync.isActive,
+    lipSync.start,
+    lipSync.stop,
+  ]);
 
   const handleLoadModel = useCallback(() => {
     live2d.loadModel();
@@ -273,8 +274,7 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
         {isPageFocused && (
           <ReactNativeLive2dView
             style={styles.live2dView}
-            {...live2d.live2dProps}
-            motionGroup={undefined}  // 不设置动作，避免干扰口型同步
+            {...live2d.live2dPropsForLipSync}
             onTap={handleLive2DTap}
           />
         )}

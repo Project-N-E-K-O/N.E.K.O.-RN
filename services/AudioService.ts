@@ -1,5 +1,8 @@
-import { Alert } from 'react-native';
-import { AndroidPCMStreamService } from './android.pcmstream';
+import { Alert, Platform } from 'react-native';
+import { createNativeAudioService } from '@project_neko/audio-service';
+import { createWebAudioService } from '@project_neko/audio-service/web';
+import type { AudioService as CrossPlatformAudioService } from '@project_neko/audio-service';
+import type { RealtimeClientLike } from '@project_neko/audio-service';
 import { WSService } from './wsService';
 
 /**
@@ -51,11 +54,16 @@ export enum ConnectionStatus {
 export class AudioService {
   private config: AudioServiceConfig;
   private wsService: WSService | null = null;
-  private pcmStreamService: AndroidPCMStreamService | null = null;
   private connectionStatus: ConnectionStatus = ConnectionStatus.DISCONNECTED;
   private isInitialized: boolean = false;
   private statsUpdateInterval: ReturnType<typeof setInterval> | null = null;
   private isSessionActive: boolean = false;
+
+  // 新版跨平台 audio-service（Native/Web 都走这一套）
+  private audioService: (CrossPlatformAudioService & { detach?: () => void }) | null = null;
+  private isRecording: boolean = false;
+  private lastSpeechDetectedAt: number = 0;
+  private lastKnownOutputAmp: number = 0;
 
   constructor(config: AudioServiceConfig) {
     this.config = config;
@@ -76,7 +84,7 @@ export class AudioService {
       // 1. 初始化 WebSocket
       await this.initWebSocket();
       
-      // 2. 初始化音频服务
+      // 2. 初始化音频服务（跨平台：@project_neko/audio-service）
       await this.initAudioService();
       
       // 3. 开始统计信息更新
@@ -141,16 +149,55 @@ export class AudioService {
     }
 
     try {
-      // 创建 PCM 流服务
-      this.pcmStreamService = new AndroidPCMStreamService(this.wsService);
-      this.pcmStreamService.init();
-      
-      // 配置录音会话
-      await this.pcmStreamService.configureRecordingAudioSession();
+      const client = this.wsService.getRealtimeClient() as unknown as RealtimeClientLike | null;
+      if (!client) {
+        throw new Error('RealtimeClient 未就绪（WebSocket 尚未连接或已关闭）');
+      }
 
-      // Android 平台播放器将在第一次播放时自动初始化（enqueueAndroidPCM）
-      // 不在启动时初始化，避免不必要地暂停录音
-      console.log('✅ 音频服务初始化完成（播放器将在需要时自动初始化）');
+      // Native / Web 分流（Expo Web 走 WebAudio + getUserMedia）
+      if (Platform.OS === 'web') {
+        const svc = createWebAudioService({
+          client,
+          isMobile: true,
+          // focusMode：播放时尽量不回传麦克风（避免“边听边说”的回声/打断）
+          focusModeEnabled: true,
+        }) as any;
+        this.audioService = svc;
+      } else {
+        const svc = createNativeAudioService({
+          client,
+          // 与当前 RN 侧约定保持一致：
+          // - recordTargetRate 16k（上行）
+          // - playbackSampleRate 48k（下行 PCM）
+          recordTargetRate: 16000,
+          playbackSampleRate: 48000,
+        }) as any;
+        this.audioService = svc;
+      }
+
+      // 订阅状态：用于兼容旧的 getIsRecording/isPlaying 等
+      if ((this.audioService as any)?.on) {
+        (this.audioService as any).on('state', ({ state }: any) => {
+          const isRec = state === 'recording';
+          this.isRecording = isRec;
+          this.config.onRecordingStateChange?.(isRec);
+        });
+
+        (this.audioService as any).on('inputAmplitude', ({ amplitude }: any) => {
+          // amplitude > 0 仅用于粗略 UI/调试，不作为严格判定
+          const hasVoice = typeof amplitude === 'number' && amplitude > 0.02;
+          if (hasVoice) this.lastSpeechDetectedAt = Date.now();
+        });
+
+        (this.audioService as any).on('outputAmplitude', ({ amplitude }: any) => {
+          this.lastKnownOutputAmp = typeof amplitude === 'number' ? amplitude : 0;
+        });
+      }
+
+      // attach 后即可接管二进制播放（无需 main.tsx 手动 playPCMData）
+      this.audioService!.attach();
+
+      console.log('✅ 音频服务初始化完成（@project_neko/audio-service 已接管收发）');
     } catch (error) {
       console.error('❌ 音频服务初始化失败:', error);
       throw error;
@@ -191,24 +238,24 @@ export class AudioService {
       throw new Error('AudioService 未初始化');
     }
 
-    if (!this.pcmStreamService) {
+    if (!this.audioService) {
       throw new Error('音频服务未初始化');
     }
 
-    if (this.pcmStreamService.getIsRecording()) {
+    if (this.isRecording) {
       console.warn('⚠️ 已经在录音中');
       return;
     }
 
     try {
-      // 开始会话
-      this.startSession();
-      
-      // 开始录音
-      await this.pcmStreamService.toggleRecording();
-      
+      // 新版：startVoiceSession 内部会发送 start_session 并等待 session_started
+      await this.audioService.startVoiceSession({
+        targetSampleRate: 16000,
+        timeoutMs: 10_000,
+      });
+      this.isSessionActive = true;
+
       console.log('🎤 开始录音');
-      this.config.onRecordingStateChange?.(true);
     } catch (error) {
       console.error('❌ 开始录音失败:', error);
       Alert.alert('错误', '开始录音失败');
@@ -220,24 +267,26 @@ export class AudioService {
    * 停止录音
    */
   async stopRecording(): Promise<void> {
-    if (!this.pcmStreamService) {
+    if (!this.audioService) {
       throw new Error('音频服务未初始化');
     }
 
-    if (!this.pcmStreamService.getIsRecording()) {
+    if (!this.isRecording) {
       console.warn('⚠️ 当前没有在录音');
       return;
     }
 
     try {
-      // 停止录音
-      await this.pcmStreamService.toggleRecording();
-      
-      // 结束会话
-      this.endSession();
+      await this.audioService.stopVoiceSession();
+      // 与旧版协议保持一致：停止录音时显式结束会话（服务端通常会清理上下文）
+      try {
+        this.wsService?.getRealtimeClient()?.sendJson({ action: 'end_session' });
+      } catch (_e) {
+        // ignore
+      }
+      this.isSessionActive = false;
       
       console.log('⏸️ 停止录音');
-      this.config.onRecordingStateChange?.(false);
     } catch (error) {
       console.error('❌ 停止录音失败:', error);
       throw error;
@@ -248,11 +297,11 @@ export class AudioService {
    * 切换录音状态
    */
   async toggleRecording(): Promise<void> {
-    if (!this.pcmStreamService) {
+    if (!this.audioService) {
       throw new Error('音频服务未初始化');
     }
 
-    const isCurrentlyRecording = this.pcmStreamService.getIsRecording();
+    const isCurrentlyRecording = this.isRecording;
     
     if (isCurrentlyRecording) {
       await this.stopRecording();
@@ -265,37 +314,16 @@ export class AudioService {
    * 开始会话
    */
   private startSession(): void {
-    if (!this.wsService) {
-      console.warn('⚠️ WebSocket 未初始化，无法开始会话');
-      return;
-    }
-
-    const sessionMessage = {
-      action: 'start_session',
-      input_type: 'audio'
-    };
-
-    this.wsService.send(JSON.stringify(sessionMessage));
-    this.isSessionActive = true;
-    console.log('📤 已发送 start_session');
+    // 已被 @project_neko/audio-service 接管：请使用 startRecording()/startVoiceSession()
+    console.warn('⚠️ startSession() 已弃用：请使用 startRecording()');
   }
 
   /**
    * 结束会话
    */
   private endSession(): void {
-    if (!this.wsService) {
-      console.warn('⚠️ WebSocket 未初始化，无法结束会话');
-      return;
-    }
-
-    const sessionMessage = {
-      action: 'end_session'
-    };
-
-    this.wsService.send(JSON.stringify(sessionMessage));
-    this.isSessionActive = false;
-    console.log('📤 已发送 end_session');
+    // 已被 @project_neko/audio-service 接管：请使用 stopRecording()/stopVoiceSession()
+    console.warn('⚠️ endSession() 已弃用：请使用 stopRecording()');
   }
 
   /**
@@ -375,8 +403,8 @@ export class AudioService {
    * 处理 ArrayBuffer 音频数据
    */
   handleAudioArrayBuffer(arrayBuffer: ArrayBuffer): void {
-    // 直接播放 PCM 数据
-    this.playPCMData(arrayBuffer);
+    // 新版已由 audio-service 通过 binary 事件自动处理
+    console.warn('⚠️ handleAudioArrayBuffer 已不再需要：binary 播放由 @project_neko/audio-service 接管');
   }
 
   /**
@@ -392,38 +420,36 @@ export class AudioService {
    * 播放 PCM 音频数据
    */
   async playPCMData(arrayBuffer: ArrayBuffer): Promise<void> {
-    if (!this.pcmStreamService) {
-      console.warn('⚠️ 音频服务未初始化，无法播放音频');
-      return;
-    }
-
-    await this.pcmStreamService.playPCMData(arrayBuffer);
+    // 兼容旧调用：主链路不应再手动调用播放（避免双重播放）
+    console.warn('⚠️ playPCMData 已弃用：请让 @project_neko/audio-service 通过 binary 事件自动播放');
   }
 
   /**
    * 清空音频队列
    */
   clearAudioQueue(): void {
-    if (!this.pcmStreamService) {
+    if (!this.audioService) {
       console.warn('⚠️ 音频服务未初始化');
       return;
     }
-
-    this.pcmStreamService.clearAudioQueue();
-    console.log('🧹 音频队列已清空');
+    this.audioService.stopPlayback();
+    console.log('🧹 已停止播放并清空队列（audio-service）');
   }
 
   /**
    * 处理用户语音检测（打断）
    */
   handleUserSpeechDetection(): void {
-    if (!this.pcmStreamService) {
+    if (!this.audioService) {
       console.warn('⚠️ 音频服务未初始化');
       return;
     }
 
-    this.pcmStreamService.handleUserSpeechDetection();
-    console.log('🎤 处理用户语音打断');
+    // 精确打断由 audio-service 在收到 user_activity/audio_chunk 时自动执行；
+    // 这里保留外部主动打断入口（UI/业务触发）
+    this.audioService.stopPlayback();
+    this.lastSpeechDetectedAt = Date.now();
+    console.log('🎤 主动打断：stopPlayback()');
   }
 
   /**
@@ -443,18 +469,25 @@ export class AudioService {
    * 获取音频统计信息
    */
   getStats(): AudioStats | null {
-    if (!this.pcmStreamService) {
-      return null;
-    }
-
-    return this.pcmStreamService.getStats();
+    // 新版 audio-service 不暴露旧版细粒度统计；这里提供“兼容字段 + 近似值”
+    const now = Date.now();
+    const recentlyDetected = now - this.lastSpeechDetectedAt < 1_500;
+    return {
+      audioChunksCount: 0,
+      sendCount: 0,
+      tempBufferLength: 0,
+      isStreaming: this.isRecording,
+      isPlaying: this.lastKnownOutputAmp > 0.01,
+      feedbackControlStatus: Platform.OS === 'web' ? 'WebAudio' : 'PCMStream',
+      isSpeechDetected: recentlyDetected,
+    };
   }
 
   /**
    * 获取录音状态
    */
   getIsRecording(): boolean {
-    return this.pcmStreamService?.getIsRecording() || false;
+    return this.isRecording;
   }
 
   /**
@@ -480,15 +513,18 @@ export class AudioService {
     // 停止统计更新
     this.stopStatsUpdate();
 
-    // 停止录音
-    if (this.pcmStreamService?.getIsRecording()) {
-      this.pcmStreamService.toggleRecording().catch(err => {
+    // 停止录音/播放并解绑监听
+    if (this.isRecording) {
+      this.audioService?.stopVoiceSession().catch((err: any) => {
         console.error('停止录音失败:', err);
       });
     }
-
-    // 清理音频资源
-    this.pcmStreamService?.uninitializeAudio();
+    try {
+      this.audioService?.stopPlayback();
+    } catch (_e) {}
+    try {
+      this.audioService?.detach?.();
+    } catch (_e) {}
 
     // 关闭 WebSocket
     if (this.wsService) {
@@ -496,10 +532,12 @@ export class AudioService {
     }
 
     // 重置状态
-    this.pcmStreamService = null;
     this.wsService = null;
+    this.audioService = null;
     this.isInitialized = false;
     this.connectionStatus = ConnectionStatus.DISCONNECTED;
+    this.isSessionActive = false;
+    this.isRecording = false;
 
     console.log('✅ AudioService 已销毁');
   }
@@ -510,7 +548,7 @@ export class AudioService {
   getUnderlyingServices() {
     return {
       wsService: this.wsService,
-      pcmStreamService: this.pcmStreamService,
+      audioService: this.audioService,
     };
   }
 }

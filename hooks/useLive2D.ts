@@ -39,18 +39,29 @@ export const useLive2D = (config: UseLive2DConfig) => {
     autoBlink: true,
   });
 
+  /**
+   * 原生侧是否已完成“模型加载并可渲染”（由 ReactNativeLive2dView 的 onModelLoaded 事件驱动）
+   *
+   * 与 modelState.isReady 的区别：
+   * - modelState.isReady：模型文件已下载/校验完成（JS 资源层 ready）
+   * - isNativeModelLoaded：原生 GL/Cubism 已完成加载并发出回调（渲染层 ready）
+   */
+  const [isNativeModelLoaded, setIsNativeModelLoaded] = useState(false);
+
   // Service 引用
   const live2dServiceRef = useRef<Live2DService | null>(null);
 
   // 加载模型
   const loadModel = useCallback(async () => {
     console.log('📥 [useLive2D] loadModel 被调用');
-    
-    // 添加延迟，确保原生层和 CubismFramework 已完全初始化
-    // 这对于页面首次加载特别重要
-    console.log('⏳ [useLive2D] 等待 1 秒，确保 GL 和 CubismFramework 初始化完成...');
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
+
+    // JS 资源层已经 ready 时直接跳过，避免重复触发 native initialize 与 Service.loadModel()
+    const svc = live2dServiceRef.current;
+    if (svc?.isReady() && svc.getModelState().path) {
+      console.log('✅ [useLive2D] Service 已 ready，跳过重复 loadModel');
+      return;
+    }
+
     console.log('🚀 [useLive2D] 开始调用 Service.loadModel()');
     await live2dServiceRef.current?.loadModel();
   }, []);
@@ -58,6 +69,7 @@ export const useLive2D = (config: UseLive2DConfig) => {
   // 卸载模型
   const unloadModel = useCallback(() => {
     live2dServiceRef.current?.unloadModel();
+    setIsNativeModelLoaded(false);
   }, []);
 
   // 清理模型缓存
@@ -93,6 +105,7 @@ export const useLive2D = (config: UseLive2DConfig) => {
   // 模型加载完成回调
   const handleModelLoaded = useCallback(() => {
     console.log('✅ Live2D 模型渲染完成');
+    setIsNativeModelLoaded(true);
   }, []);
 
   // 模型错误回调
@@ -148,7 +161,8 @@ export const useLive2D = (config: UseLive2DConfig) => {
       // 如果需要自动加载
       if (autoLoad) {
         console.log('🎯 自动加载模型');
-        // loadModel();
+        // 使用 void 避免未处理的 Promise 警告；重复加载由 Service 内部去重（isLoading guard）
+        void loadModel();
       }
     });
 
@@ -158,7 +172,7 @@ export const useLive2D = (config: UseLive2DConfig) => {
       live2dServiceRef.current?.destroy();
       live2dServiceRef.current = null;
     };
-  }, [modelName, backendHost, backendPort, backendScheme, live2dPath, autoLoad]);
+  }, [modelName, backendHost, backendPort, backendScheme, live2dPath, autoLoad, loadModel]);
 
   // 使用 useMemo 缓存 live2dProps，避免每次渲染都创建新对象
   const live2dProps = useMemo(() => ({
@@ -186,9 +200,24 @@ export const useLive2D = (config: UseLive2DConfig) => {
     handleTap,
   ]);
 
+  /**
+   * LipSync 模式专用 props：
+   * - 不传 motionGroup，避免动作系统干扰口型同步观感/稳定性
+   */
+  const live2dPropsForLipSync = useMemo(() => ({
+    ...live2dProps,
+    motionGroup: undefined,
+  }), [live2dProps]);
+
+  // 当 JS 侧模型路径切换时，重置原生“已加载”标记，等待新一轮 onModelLoaded
+  useEffect(() => {
+    setIsNativeModelLoaded(false);
+  }, [modelState.path]);
+
   return {
     // 状态（从 Service 同步）
     modelState,
+    isNativeModelLoaded,
     currentMotion: animationState.currentMotion,
     currentExpression: animationState.currentExpression,
     scale: transformState.scale,
@@ -213,6 +242,7 @@ export const useLive2D = (config: UseLive2DConfig) => {
     
     // Live2D 视图属性（可直接传给 ReactNativeLive2dView）
     live2dProps,
+    live2dPropsForLipSync,
     
     // 原始 Service 引用（供高级用户使用）
     live2dService: live2dServiceRef.current,

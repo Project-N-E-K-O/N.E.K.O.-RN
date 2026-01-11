@@ -55,18 +55,25 @@
 │  │                 │  │               │ │
 │  │ • Live2D 渲染   │  │ • Toolbar UI  │ │
 │  │ • 音频播放      │  │ • Modal       │ │
-│  │ • 手势控制      │  │ • ChatBox     │ │
+│  │ • 手势控制（部分）│  │ • ChatBox     │ │
 │  │ • AsyncStorage  │  │ • Settings    │ │
 │  └─────────────────┘  └───────────────┘ │
 │           ↓                    ↓         │
 │  ┌─────────────────────────────────────┐ │
 │  │  @project_neko/components (共享)   │ │
 │  │  - 类型定义                         │ │
-│  │  - 业务逻辑 Hooks                   │ │
-│  │  - 请求客户端                       │ │
+│  │  - 跨平台 UI 组件（含 .native.tsx）  │ │
+│  │  - 组件级共享逻辑（types/hooks 等）  │ │
 │  └─────────────────────────────────────┘ │
 └─────────────────────────────────────────┘
 ```
+
+> 备注：
+> - RN 主界面（`app/(tabs)/main.tsx`）网络层统一收敛到跨平台公共库：
+>   - HTTP：`@project_neko/request`（Agent 相关 API：health/flags/availability/admin control 等）
+>   - WebSocket：`@project_neko/realtime`（`/ws/{characterName}` 音频流与文本消息）
+> - 说明：`main.tsx` 本身不一定直接 import 这些包；通常通过 `hooks/*` 与 `services/*` 间接使用（便于复用与测试）。
+> - “手势控制”现状请以 `docs/modules/live2d.md` 的 **手势（拖拽/缩放）支持现状** 为准：单指触摸交互 ✅；UI 拖拽移动/双指捏合缩放仍待接入。
 
 ### 条件渲染模式
 
@@ -117,7 +124,9 @@ export const Live2DRightToolbar = Platform.select({
 |------|------|-------------|----------|
 | `Live2DView` | 需要原生渲染性能 | ✅ 已完成 | ⏳ 待实现 |
 | `AudioPlayer` | 需要原生音频 API | ✅ 已完成 | ⏳ 待实现 |
-| `GestureHandler` | 需要原生手势识别 | ✅ 已完成 | ⏳ 待实现 |
+| `Live2D 手势（拖拽/缩放）` | 需要手势识别与 transform 控制 | ⚠️ 部分支持（单指触摸交互；UI 拖拽移动/捏合缩放待接入） | ⏳ 待实现 |
+
+> 说明：RN 主界面的“音频播放 + 麦克风采集”已收敛到跨平台库 `@project_neko/audio-service`（Native 走 `react-native-pcm-stream`，Web 走 WebAudio），详见 `docs/modules/audio.md`。
 
 ### B 类：Web 实现（优先）
 
@@ -221,6 +230,7 @@ npm run android
 - ⏳ Live2DRightToolbar（Native 版本）
 - ⏳ Settings Bottom Sheet（Native）
 - ⏳ Agent Panel（Native）
+- ⏳ Live2D 手势：拖拽移动模型 / 双指捏合缩放（将手势映射到 `scale/position`）
 - ⏳ 性能优化与动画改进
 
 ---

@@ -12,6 +12,8 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createRequestClient } from '@project_neko/request';
+import type { TokenRefreshFn, TokenStorage } from '@project_neko/request';
 
 export type Live2DAgentToggleId = 'master' | 'keyboard' | 'mcp' | 'userPlugin';
 
@@ -65,12 +67,56 @@ function tOrDefault(t: ((key: string, fallback?: string) => string) | undefined,
   return t ? t(key, fallback) : fallback;
 }
 
+/**
+ * 主界面 Agent 后端不强制鉴权，但 request client 需要提供存储/刷新函数。
+ * 这里使用一个 no-op 存储 + 永远失败的 refreshApi，避免无 token 场景引入额外依赖。
+ */
+class NoopTokenStorage implements TokenStorage {
+  async getAccessToken(): Promise<string | null> {
+    return null;
+  }
+  async setAccessToken(_token: string): Promise<void> {}
+  async getRefreshToken(): Promise<string | null> {
+    return null;
+  }
+  async setRefreshToken(_token: string): Promise<void> {}
+  async clearTokens(): Promise<void> {}
+}
+
+const noopRefreshApi: TokenRefreshFn = async () => {
+  throw new Error('No refresh token available');
+};
+
 export function useLive2DAgentBackend({
   apiBase,
   t,
   showToast,
   openPanel,
 }: UseLive2DAgentBackendArgs): UseLive2DAgentBackendResult {
+  const clientRef = useRef(
+    createRequestClient({
+      baseURL: apiBase.trim().replace(/\/+$/, ''),
+      storage: new NoopTokenStorage(),
+      refreshApi: noopRefreshApi,
+      // Agent 状态轮询较频繁，避免默认超时过长导致堆积
+      timeout: 8000,
+      returnDataOnly: true,
+      logEnabled: false,
+    }),
+  );
+
+  // apiBase 变化时重建 client（开发扫码切换 host/port 时需要）
+  useEffect(() => {
+    clientRef.current = createRequestClient({
+      baseURL: apiBase.trim().replace(/\/+$/, ''),
+      storage: new NoopTokenStorage(),
+      refreshApi: noopRefreshApi,
+      timeout: 8000,
+      returnDataOnly: true,
+      logEnabled: false,
+    });
+  }, [apiBase]);
+
   const agentUserOpSeqRef = useRef(0);
   const agentRefreshSeqRef = useRef(0);
   const agentProcessingRef = useRef(false);
@@ -93,42 +139,37 @@ export function useLive2DAgentBackend({
 
   const fetchAgentHealth = useCallback(async (): Promise<boolean> => {
     try {
-      const resp = await fetch(`${apiBase}/api/agent/health`);
-      return resp.ok;
+      await clientRef.current.get('/api/agent/health');
+      return true;
     } catch (_e) {
       return false;
     }
-  }, [apiBase]);
+  }, []);
 
   const fetchAgentFlags = useCallback(async (): Promise<AgentFlagsResponse> => {
     try {
-      const resp = await fetch(`${apiBase}/api/agent/flags`);
-      if (!resp.ok) {
-        return { success: false, error: `http_${resp.status}` };
-      }
-      return (await resp.json()) as AgentFlagsResponse;
+      const data = (await clientRef.current.get('/api/agent/flags')) as AgentFlagsResponse;
+      return data;
     } catch (e) {
       return { success: false, error: String(e) };
     }
-  }, [apiBase]);
+  }, []);
 
   const fetchAvailability = useCallback(
     async (kind: 'computer_use' | 'mcp' | 'user_plugin'): Promise<boolean> => {
       const map: Record<'computer_use' | 'mcp' | 'user_plugin', string> = {
-        computer_use: `${apiBase}/api/agent/computer_use/availability`,
-        mcp: `${apiBase}/api/agent/mcp/availability`,
-        user_plugin: `${apiBase}/api/agent/user_plugin/availability`,
+        computer_use: `/api/agent/computer_use/availability`,
+        mcp: `/api/agent/mcp/availability`,
+        user_plugin: `/api/agent/user_plugin/availability`,
       };
       try {
-        const resp = await fetch(map[kind]);
-        if (!resp.ok) return false;
-        const data = (await resp.json()) as { ready?: boolean };
-        return Boolean(data.ready);
+        const data = (await clientRef.current.get(map[kind])) as { ready?: boolean };
+        return Boolean(data?.ready);
       } catch (_e) {
         return false;
       }
     },
-    [apiBase]
+    []
   );
 
   const updateAvailabilityCache = useCallback(
@@ -260,38 +301,18 @@ export function useLive2DAgentBackend({
 
   const postAgentFlags = useCallback(
     async (flags: Partial<Record<AgentFlagsKey, boolean>>) => {
-      const resp = await fetch(`${apiBase}/api/agent/flags`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ flags }),
-      });
-      if (!resp.ok) {
-        throw new Error(`flags_http_${resp.status}`);
-      }
-      const data = (await resp.json()) as { success?: boolean; error?: string };
-      if (data && data.success === false) {
-        throw new Error(data.error || 'flags_failed');
-      }
+      const data = (await clientRef.current.post('/api/agent/flags', { flags })) as { success?: boolean; error?: string };
+      if (data && data.success === false) throw new Error(data.error || 'flags_failed');
     },
-    [apiBase]
+    []
   );
 
   const postAdminControl = useCallback(
     async (action: 'enable_analyzer' | 'disable_analyzer') => {
-      const resp = await fetch(`${apiBase}/api/agent/admin/control`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action }),
-      });
-      if (!resp.ok) {
-        throw new Error(`admin_http_${resp.status}`);
-      }
-      const data = (await resp.json()) as { success?: boolean; error?: string };
-      if (data && data.success === false) {
-        throw new Error(data.error || 'admin_failed');
-      }
+      const data = (await clientRef.current.post('/api/agent/admin/control', { action })) as { success?: boolean; error?: string };
+      if (data && data.success === false) throw new Error(data.error || 'admin_failed');
     },
-    [apiBase]
+    []
   );
 
   const onAgentChange = useCallback(
