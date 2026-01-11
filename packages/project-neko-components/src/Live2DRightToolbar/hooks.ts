@@ -10,10 +10,12 @@ import type {
   Live2DRightToolbarPanel,
   Live2DAgentToggleId,
   Live2DSettingsToggleId,
+  Live2DSettingsMenuId,
   Live2DAgentState,
   Live2DSettingsState,
   ToolbarButton,
   ToolbarIcon,
+  SettingsMenuItem,
   ToggleRow,
 } from './types';
 
@@ -242,40 +244,65 @@ export function useAgentToggleRows(
 /**
  * Settings 菜单项配置
  */
-export function useSettingsMenuItems(t?: TFunction, iconBasePath = '/static/icons') {
-  return useMemo(
-    () => [
+export function useSettingsMenuItems(t?: TFunction, iconBasePath?: string): SettingsMenuItem<string>[];
+export function useSettingsMenuItems<TIcon = ToolbarIcon>(
+  t: TFunction | undefined,
+  options?: {
+    iconBasePath?: string;
+    /**
+     * RN: 传入 require() 图标资源映射，确保菜单图标可被本地打包
+     * Web: 通常不需要传（默认返回字符串路径）
+     */
+    icons?: Record<Live2DSettingsMenuId, TIcon>;
+  }
+): SettingsMenuItem<TIcon>[];
+export function useSettingsMenuItems<TIcon = ToolbarIcon>(
+  t?: TFunction,
+  iconBasePathOrOptions: string | { iconBasePath?: string; icons?: Record<Live2DSettingsMenuId, TIcon> } = '/static/icons'
+): SettingsMenuItem<TIcon>[] {
+  const normalized =
+    typeof iconBasePathOrOptions === 'string'
+      ? { iconBasePath: iconBasePathOrOptions, icons: undefined }
+      : { iconBasePath: iconBasePathOrOptions.iconBasePath ?? '/static/icons', icons: iconBasePathOrOptions.icons };
+
+  const iconBasePath = normalized.iconBasePath;
+  const icons = normalized.icons;
+
+  return useMemo(() => {
+    const mkIcon = (id: Live2DSettingsMenuId, defaultFileName: string) =>
+      (icons?.[id] ?? (`${iconBasePath}/${defaultFileName}` as unknown as TIcon)) as TIcon;
+
+    return [
       {
         id: 'live2dSettings' as const,
         label: tOrDefault(t, 'settings.menu.live2dSettings', 'Live2D设置'),
-        icon: `${iconBasePath}/live2d_settings_icon.png`,
+        icon: mkIcon('live2dSettings', 'live2d_settings_icon.png'),
       },
       {
         id: 'apiKeys' as const,
         label: tOrDefault(t, 'settings.menu.apiKeys', 'API密钥'),
-        icon: `${iconBasePath}/api_key_icon.png`,
+        icon: mkIcon('apiKeys', 'api_key_icon.png'),
       },
       {
         id: 'characterManage' as const,
         label: tOrDefault(t, 'settings.menu.characterManage', '角色管理'),
-        icon: `${iconBasePath}/character_icon.png`,
+        icon: mkIcon('characterManage', 'character_icon.png'),
       },
       {
         id: 'voiceClone' as const,
         label: tOrDefault(t, 'settings.menu.voiceClone', '声音克隆'),
-        icon: `${iconBasePath}/voice_clone_icon.png`,
+        icon: mkIcon('voiceClone', 'voice_clone_icon.png'),
       },
       {
         id: 'memoryBrowser' as const,
         label: tOrDefault(t, 'settings.menu.memoryBrowser', '记忆浏览'),
-        icon: `${iconBasePath}/memory_icon.png`,
+        icon: mkIcon('memoryBrowser', 'memory_icon.png'),
       },
       {
         id: 'steamWorkshop' as const,
         label: tOrDefault(t, 'settings.menu.steamWorkshop', '创意工坊'),
-        icon: `${iconBasePath}/Steam_icon_logo.png`,
+        icon: mkIcon('steamWorkshop', 'Steam_icon_logo.png'),
       },
-    ],
-    [t, iconBasePath]
-  );
+    ];
+  }, [t, iconBasePath, icons]);
 }

@@ -24,6 +24,7 @@ import {
   useToolbarButtons,
   useSettingsToggleRows,
   useAgentToggleRows,
+  useSettingsMenuItems,
 } from './hooks';
 import type { Live2DRightToolbarProps, Live2DSettingsMenuId } from './types';
 import { styles } from './styles.native';
@@ -81,6 +82,18 @@ export function Live2DRightToolbar({
   // 使用共享的 toggle rows 配置
   const settingsToggleRows = useSettingsToggleRows(settings, t);
   const agentToggleRows = useAgentToggleRows(agent, t);
+  const settingsMenuItems = useSettingsMenuItems<number>(t, {
+    // RN: 这里可以替换为更细粒度的图标资源，以便与 Web 端一致展示
+    // 目前仓库内仅有少量通用图标，先复用 set_off 作为占位，保证结构与渲染一致
+    icons: {
+      live2dSettings: require('../../../assets/icons/set_off.png'),
+      apiKeys: require('../../../assets/icons/set_off.png'),
+      characterManage: require('../../../assets/icons/set_off.png'),
+      voiceClone: require('../../../assets/icons/set_off.png'),
+      memoryBrowser: require('../../../assets/icons/set_off.png'),
+      steamWorkshop: require('../../../assets/icons/set_off.png'),
+    },
+  });
 
   if (!visible) return null;
 
@@ -189,42 +202,18 @@ export function Live2DRightToolbar({
                   {!isMobile && (
                     <>
                       <View style={styles.separator} />
-                      <TouchableOpacity
-                        style={styles.menuItem}
-                        onPress={() => onSettingsMenuClick?.('live2dSettings')}
-                      >
-                        <Text style={styles.menuItemText}>{t('live2dSettings')}</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.menuItem}
-                        onPress={() => onSettingsMenuClick?.('apiKeys')}
-                      >
-                        <Text style={styles.menuItemText}>{t('apiKeys')}</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.menuItem}
-                        onPress={() => onSettingsMenuClick?.('characterManage')}
-                      >
-                        <Text style={styles.menuItemText}>{t('characterManage')}</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.menuItem}
-                        onPress={() => onSettingsMenuClick?.('voiceClone')}
-                      >
-                        <Text style={styles.menuItemText}>{t('voiceClone')}</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.menuItem}
-                        onPress={() => onSettingsMenuClick?.('memoryBrowser')}
-                      >
-                        <Text style={styles.menuItemText}>{t('memoryBrowser')}</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.menuItem}
-                        onPress={() => onSettingsMenuClick?.('steamWorkshop')}
-                      >
-                        <Text style={styles.menuItemText}>{t('steamWorkshop')}</Text>
-                      </TouchableOpacity>
+                      {settingsMenuItems.map((item) => (
+                        <TouchableOpacity
+                          key={item.id}
+                          style={styles.menuItem}
+                          onPress={() => onSettingsMenuClick?.(item.id as Live2DSettingsMenuId)}
+                        >
+                          <View style={styles.menuItemContent}>
+                            <Image source={item.icon} style={styles.menuIcon} />
+                            <Text style={styles.menuItemText}>{item.label}</Text>
+                          </View>
+                        </TouchableOpacity>
+                      ))}
                     </>
                   )}
                 </ScrollView>

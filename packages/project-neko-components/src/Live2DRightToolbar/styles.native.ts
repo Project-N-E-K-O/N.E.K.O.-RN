@@ -145,9 +145,22 @@ export const styles = StyleSheet.create({
     marginBottom: 8,
   },
 
+  menuItemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  menuIcon: {
+    width: 18,
+    height: 18,
+    resizeMode: 'contain',
+  },
+
   menuItemText: {
     fontSize: 15,
     color: '#333',
+    marginLeft: 10,
+    flex: 1,
   },
 
   // 关闭按钮

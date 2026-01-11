@@ -91,3 +91,12 @@ export interface ToggleRow {
   checked: boolean;
   disabled?: boolean;
 }
+
+/**
+ * Settings 菜单项（Web 使用字符串路径；RN 使用 require() 的 number）
+ */
+export interface SettingsMenuItem<TIcon = ToolbarIcon> {
+  id: Live2DSettingsMenuId;
+  label: string;
+  icon: TIcon;
+}

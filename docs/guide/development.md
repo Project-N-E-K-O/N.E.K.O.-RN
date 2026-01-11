@@ -17,23 +17,14 @@ git submodule update --init --recursive
 ## 2. 环境准备 (Environment)
 
 ### 2.1 基础环境
-- **Node.js**: v18.0 或更高（建议 v20+）。
+- **Node.js**: v20+（建议与团队统一版本；参考 `docs/ANDROID-PLATFORM-GUIDE.md`）。
 - **包管理器**: `npm` (项目使用 `package-lock.json`)。
-- **Expo CLI**: `npm install -g expo-cli` (虽然现在通常使用 `npx expo`)。
+- **Expo CLI**: 推荐直接使用 `npx expo`（无需全局安装）。
 
 ### 2.2 Android 开发环境
-- **Android Studio**: 安装最新版本。
-- **Android SDK**: 确保安装了 API 34+。
-- **Java (JDK)**: **JDK 17** (React Native 0.73+ 的强制要求)。建议使用 SDKMAN 或 Homebrew 安装。
-- **环境变量**: 确保 `ANDROID_HOME` 和 `JAVA_HOME` 已正确配置。
+Android 环境（Android Studio / SDK / JDK 17 / 环境变量 / 真机调试）请直接按文档执行：
 
-```bash
-# macOS 示例 ~/.zshrc
-export ANDROID_HOME=$HOME/Library/Android/sdk
-export PATH=$PATH:$ANDROID_HOME/emulator
-export PATH=$PATH:$ANDROID_HOME/platform-tools
-export JAVA_HOME=$(/usr/libexec/java_home -v 17)
-```
+- **`docs/ANDROID-PLATFORM-GUIDE.md`**
 
 ## 3. 项目初始化 (Initialization)
 
@@ -63,8 +54,16 @@ npm run android
 npx expo run:ios
 ```
 
-### 4.3 本地离线构建 (Local Offline Build via EAS)
-如果你需要生成可分发的 APK 安装包，或在没有 Expo 账号登录的情况下进行本地构建，可以使用 EAS CLI 的本地构建功能：
+### 4.3 Web 运行（仅用于调试 Web 侧组件）
+
+```bash
+npm run web
+# 或
+npx expo start --web
+```
+
+### 4.4 本地离线构建 (Local Offline Build via EAS)
+如果你需要生成可分发的 APK，或在没有 Expo 账号登录的情况下本地构建，请参考 Android 指南中的 EAS 小节：
 
 ```bash
 # 1. 清理并重新生成原生 Android 项目目录
@@ -90,8 +89,9 @@ npx eas build --profile development --platform android --local
 
 ### 5.2 网络配置 (关键)
 目前音频服务和模型下载依赖局域网通信：
-- 修改 `app/(tabs)/main.tsx` 中的 `host` 为你电脑的 **局域网 IP**。
-- 确保电脑防火墙允许 48911 (WS) 和 8081 (HTTP) 端口通过。
+
+- 修改 `utils/devConnectionConfig.ts` 中的 `host` 为你电脑的 **局域网 IP**（或按 Android 模拟器/真机规则选择）
+- 确保端口可达（例如 48910/48911/8081，具体以项目配置为准）
 
 ## 6. 开发辅助页面
 - `/pcmstream-test`: 用于单独测试原生音频流录制与播放。
@@ -103,6 +103,10 @@ npx eas build --profile development --platform android --local
 1. **录音校验**：使用 `pcmstream-test.tsx` 页面确认 16kHz 采样是否有噪音。
 2. **打断校验**：在 AI 说话时大声出声，Live2D 画面应立即刷新且声音停止。
 3. **加载校验**：模型下载成功后应有本地缓存，二次加载应为秒开。
+
+更完整的验收/测试清单请参考：
+
+- `docs/integration-testing-guide.md`
 
 ---
 

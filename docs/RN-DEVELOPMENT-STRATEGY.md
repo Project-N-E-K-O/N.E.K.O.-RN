@@ -358,8 +358,9 @@ export { Live2DRightToolbar } from './src/Live2DRightToolbar/Live2DRightToolbar.
 ## 📚 相关文档
 
 ### 策略文档
-- [webapp-to-rn-sync-2026-01-10.md](./webapp-to-rn-sync-2026-01-10.md) - Web 到 RN 同步报告
-- [upstream-frontend-packages.md](./upstream-frontend-packages.md) - 上游包文档
+- [docs/README.md](./README.md) - 文档中心索引
+- [upstream-frontend-packages.md](./upstream-frontend-packages.md) - 上游公共文档入口（索引）
+- [guide/upstream-sync.md](./guide/upstream-sync.md) - 上游 packages 同步指南
 
 ### 技术文档
 - [Expo Web 文档](https://docs.expo.dev/workflow/web/)

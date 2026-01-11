@@ -226,12 +226,12 @@ npm test
 1. **[RN-DEVELOPMENT-STRATEGY.md](./RN-DEVELOPMENT-STRATEGY.md)** - 开发策略
 2. **[ANDROID-PLATFORM-GUIDE.md](./ANDROID-PLATFORM-GUIDE.md)** - Android 平台运行指南（Android 开发必读）
 3. **[CROSS-PLATFORM-COMPONENT-STRATEGY.md](./CROSS-PLATFORM-COMPONENT-STRATEGY.md)** - 跨平台组件（进阶）
-4. **[webapp-to-rn-sync-2026-01-10.md](./webapp-to-rn-sync-2026-01-10.md)** - 同步报告
+4. **[guide/troubleshooting.md](./guide/troubleshooting.md)** - 常见问题排查
 
 ### 参考文档
 - [README.md](./README.md) - 文档中心
-- [SYNC-SUMMARY-2026-01-10.md](./SYNC-SUMMARY-2026-01-10.md) - 包同步状态
-- [upstream-packages-diff-report.md](./upstream-packages-diff-report.md) - 包差异报告
+- [guide/upstream-sync.md](./guide/upstream-sync.md) - 上游 packages 同步指南
+- [upstream-frontend-packages.md](./upstream-frontend-packages.md) - 上游公共文档入口（索引）
 
 ### 模块规格
 - [modules/audio.md](./modules/audio.md) - 音频服务
