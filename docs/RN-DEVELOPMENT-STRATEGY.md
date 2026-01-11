@@ -46,7 +46,7 @@
 
 ### 架构分层
 
-```
+```plaintext
 ┌─────────────────────────────────────────┐
 │  N.E.K.O.-RN Application                │
 ├─────────────────────────────────────────┤
@@ -331,7 +331,7 @@ npx expo start --devClient
 - [ ] 功能复杂度评估
 
 ### Step 2：创建 Native 实现
-```
+```bash
 packages/project-neko-components/src/Live2DRightToolbar/
 ├── Live2DRightToolbar.tsx         # Web 版本（保留）
 ├── Live2DRightToolbar.native.tsx  # Native 版本（新建）
