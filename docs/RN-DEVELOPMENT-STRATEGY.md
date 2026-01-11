@@ -123,13 +123,13 @@ export const Live2DRightToolbar = Platform.select({
 
 | 组件 | 原因 | Web 状态 | Android 状态 |
 |------|------|---------|-------------|
-| `Live2DRightToolbar` | 复杂 UI，Web 组件成熟 | ✅ 使用 Web 版 | ⏳ 待原生化 |
-| `Modal` | react-dom 依赖，Web 兼容 | ✅ 使用 Web 版 | ⏳ 待原生化 |
-| `ChatContainer` | 复杂文本渲染，Web 优势 | ✅ 使用 Web 版 | ⏳ 待原生化 |
-| `StatusToast` | react-dom 依赖 | ✅ 使用 Web 版 | ⏳ 待原生化 |
-| `SettingsPanel` | 表单组件，Web 成熟 | ✅ 使用 Web 版 | ⏳ 待原生化 |
+| `Live2DRightToolbar` | 复杂 UI，Web 组件成熟 | ✅ 仅 Expo Web（`npm run web`）可用 | ⏳ 待原生化（Android Native 不可用） |
+| `Modal` | react-dom 依赖，Web 兼容 | ✅ 仅 Expo Web（`npm run web`）可用 | ⏳ 待原生化（Android Native 不可用） |
+| `ChatContainer` | 复杂文本渲染，Web 优势 | ✅ 仅 Expo Web（`npm run web`）可用 | ⏳ 待原生化（Android Native 不可用） |
+| `StatusToast` | react-dom 依赖 | ✅ 仅 Expo Web（`npm run web`）可用 | ⏳ 待原生化（Android Native 不可用） |
+| `SettingsPanel` | 表单组件，Web 成熟 | ✅ 仅 Expo Web（`npm run web`）可用 | ⏳ 待原生化（Android Native 不可用） |
 
-**注意**：在 Android 平台，这些组件通过 `Platform.OS === 'web'` 条件渲染，需要 Expo Web 支持。详见 [Android 平台运行指南](./ANDROID-PLATFORM-GUIDE.md)。
+**注意**：以上 B 类组件是 **Web-only**（依赖 Expo Web 构建目标）。它们只会在 **Expo/Web（`npm run web`）** 下渲染；在 Android 原生构建中 `Platform.OS === 'android'`，`Platform.OS === 'web'` 恒为 false，因此 **无法在 Android Native 中使用**，当前状态为 **待原生化**（如需 Android 支持需实现对应 `.native.tsx` 版本）。
 
 ### C 类：混合实现（未来优化）
 

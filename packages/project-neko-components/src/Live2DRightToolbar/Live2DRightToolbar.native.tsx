@@ -26,7 +26,12 @@ import {
   useAgentToggleRows,
   useSettingsMenuItems,
 } from './hooks';
-import type { Live2DRightToolbarProps, Live2DSettingsMenuId } from './types';
+import type {
+  Live2DAgentToggleId,
+  Live2DRightToolbarProps,
+  Live2DSettingsMenuId,
+  Live2DSettingsToggleId,
+} from './types';
 import { styles } from './styles.native';
 
 export * from './types';
@@ -71,11 +76,11 @@ export function Live2DRightToolbar({
     t,
     // RN: 使用本地打包的图标资源（确保这些文件存在于 assets/icons/）
     icons: {
-      mic: require('../../../assets/icons/mic_icon_off.png'),
-      screen: require('../../../assets/icons/screen_icon_off.png'),
-      agent: require('../../../assets/icons/Agent_off.png'),
-      settings: require('../../../assets/icons/set_off.png'),
-      goodbye: require('../../../assets/icons/rest_off.png'),
+      mic: require('../../../../assets/icons/mic_icon_off.png'),
+      screen: require('../../../../assets/icons/screen_icon_off.png'),
+      agent: require('../../../../assets/icons/Agent_off.png'),
+      settings: require('../../../../assets/icons/set_off.png'),
+      goodbye: require('../../../../assets/icons/rest_off.png'),
     },
   });
 
@@ -86,12 +91,12 @@ export function Live2DRightToolbar({
     // RN: 这里可以替换为更细粒度的图标资源，以便与 Web 端一致展示
     // 目前仓库内仅有少量通用图标，先复用 set_off 作为占位，保证结构与渲染一致
     icons: {
-      live2dSettings: require('../../../assets/icons/set_off.png'),
-      apiKeys: require('../../../assets/icons/set_off.png'),
-      characterManage: require('../../../assets/icons/set_off.png'),
-      voiceClone: require('../../../assets/icons/set_off.png'),
-      memoryBrowser: require('../../../assets/icons/set_off.png'),
-      steamWorkshop: require('../../../assets/icons/set_off.png'),
+      live2dSettings: require('../../../../assets/icons/set_off.png'),
+      apiKeys: require('../../../../assets/icons/set_off.png'),
+      characterManage: require('../../../../assets/icons/set_off.png'),
+      voiceClone: require('../../../../assets/icons/set_off.png'),
+      memoryBrowser: require('../../../../assets/icons/set_off.png'),
+      steamWorkshop: require('../../../../assets/icons/set_off.png'),
     },
   });
 
@@ -108,7 +113,7 @@ export function Live2DRightToolbar({
             activeOpacity={0.7}
           >
             <Image
-              source={require('../../../assets/icons/rest_off.png')}
+              source={require('../../../../assets/icons/rest_off.png')}
               style={styles.icon}
             />
           </TouchableOpacity>
@@ -147,7 +152,7 @@ export function Live2DRightToolbar({
                     >
                       <Switch
                         value={row.checked}
-                        onValueChange={(value) => onAgentChange(row.id as any, value)}
+                        onValueChange={(value) => onAgentChange(row.id as Live2DAgentToggleId, value)}
                         disabled={row.disabled}
                         trackColor={{ false: '#ccc', true: '#44b7fe' }}
                         thumbColor="#fff"
@@ -190,7 +195,7 @@ export function Live2DRightToolbar({
                     <View key={row.id} style={styles.row}>
                       <Switch
                         value={row.checked}
-                        onValueChange={(value) => onSettingsChange(row.id as any, value)}
+                        onValueChange={(value) => onSettingsChange(row.id as Live2DSettingsToggleId, value)}
                         trackColor={{ false: '#ccc', true: '#44b7fe' }}
                         thumbColor="#fff"
                       />
