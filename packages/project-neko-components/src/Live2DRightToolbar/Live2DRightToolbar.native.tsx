@@ -57,7 +57,7 @@ export function Live2DRightToolbar({
   const { togglePanel } = usePanelToggle(openPanel, onOpenPanelChange);
 
   // 使用共享的按钮配置（RN 使用本地 require() 资源）
-  const buttons = useToolbarButtons({
+  const buttons = useToolbarButtons<number>({
     micEnabled,
     screenEnabled,
     openPanel,

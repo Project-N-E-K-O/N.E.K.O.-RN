@@ -13,6 +13,7 @@ import type {
   Live2DAgentState,
   Live2DSettingsState,
   ToolbarButton,
+  ToolbarIcon,
   ToggleRow,
 } from './types';
 
@@ -50,7 +51,7 @@ export function usePanelToggle(
         return;
       }
 
-      // 切换：先关掉旧 panel（播放退出动画），再打开新 panel
+      // 切换：允许旧 panel 退出动画的同时打开新 panel
       if (openPanel) {
         startClose(openPanel);
       }
@@ -82,7 +83,7 @@ export function usePanelToggle(
  * @param iconBasePath - Web: 字符串路径前缀 (如 '/static/icons')
  * @param icons - RN: 本地 require() 资源映射表
  */
-export function useToolbarButtons({
+export function useToolbarButtons<TIcon = ToolbarIcon>({
   micEnabled,
   screenEnabled,
   openPanel,
@@ -108,13 +109,13 @@ export function useToolbarButtons({
   t?: TFunction;
   iconBasePath?: string;
   icons?: {
-    mic: any;
-    screen: any;
-    agent: any;
-    settings: any;
-    goodbye: any;
+    mic: TIcon;
+    screen: TIcon;
+    agent: TIcon;
+    settings: TIcon;
+    goodbye: TIcon;
   };
-}): ToolbarButton[] {
+}): ToolbarButton<TIcon>[] {
   return useMemo(
     () =>
       [
@@ -124,7 +125,7 @@ export function useToolbarButtons({
           hidden: false,
           active: micEnabled,
           onClick: () => onToggleMic(!micEnabled),
-          icon: icons?.mic ?? `${iconBasePath}/mic_icon_off.png`,
+          icon: (icons?.mic ?? `${iconBasePath}/mic_icon_off.png`) as TIcon,
         },
         {
           id: 'screen' as const,
@@ -132,7 +133,7 @@ export function useToolbarButtons({
           hidden: false,
           active: screenEnabled,
           onClick: () => onToggleScreen(!screenEnabled),
-          icon: icons?.screen ?? `${iconBasePath}/screen_icon_off.png`,
+          icon: (icons?.screen ?? `${iconBasePath}/screen_icon_off.png`) as TIcon,
         },
         {
           id: 'agent' as const,
@@ -140,7 +141,7 @@ export function useToolbarButtons({
           hidden: Boolean(isMobile),
           active: openPanel === 'agent',
           onClick: () => togglePanel('agent'),
-          icon: icons?.agent ?? `${iconBasePath}/Agent_off.png`,
+          icon: (icons?.agent ?? `${iconBasePath}/Agent_off.png`) as TIcon,
           hasPanel: true,
         },
         {
@@ -149,7 +150,7 @@ export function useToolbarButtons({
           hidden: false,
           active: openPanel === 'settings',
           onClick: () => togglePanel('settings'),
-          icon: icons?.settings ?? `${iconBasePath}/set_off.png`,
+          icon: (icons?.settings ?? `${iconBasePath}/set_off.png`) as TIcon,
           hasPanel: true,
         },
         {
@@ -158,7 +159,7 @@ export function useToolbarButtons({
           hidden: Boolean(isMobile),
           active: goodbyeMode,
           onClick: onGoodbye,
-          icon: icons?.goodbye ?? `${iconBasePath}/rest_off.png`,
+          icon: (icons?.goodbye ?? `${iconBasePath}/rest_off.png`) as TIcon,
           hasPanel: false,
         },
       ].filter((b) => !b.hidden),

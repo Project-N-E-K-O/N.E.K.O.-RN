@@ -49,7 +49,7 @@ export function Live2DRightToolbar({
   );
 
   // 使用共享的按钮配置
-  const buttons = useToolbarButtons({
+  const buttons = useToolbarButtons<string>({
     micEnabled,
     screenEnabled,
     openPanel,

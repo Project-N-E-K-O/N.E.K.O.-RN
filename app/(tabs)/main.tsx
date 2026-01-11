@@ -222,9 +222,14 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
   }, []);
 
   const handleGoodbye = useCallback(() => {
+    // 如果麦克风正在录音，先停止
+    if (toolbarMicEnabled) {
+      mainManager.stopRecording();
+      setToolbarMicEnabled(false);
+    }
     setToolbarGoodbyeMode(true);
     setToolbarOpenPanel(null);
-  }, []);
+  }, [mainManager, toolbarMicEnabled]);
 
   const handleReturn = useCallback(() => {
     setToolbarGoodbyeMode(false);

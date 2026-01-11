@@ -65,15 +65,20 @@ export interface Live2DRightToolbarProps {
 }
 
 /**
- * 按钮配置接口
+ * 图标类型：Web 使用字符串路径，RN 使用 require() 的 number 资源 ID
  */
-export interface ToolbarButton {
+export type ToolbarIcon = string | number;
+
+/**
+ * 按钮配置接口（泛型支持不同平台的图标类型）
+ */
+export interface ToolbarButton<TIcon = ToolbarIcon> {
   id: Live2DRightToolbarButtonId;
   title: string;
   hidden: boolean;
   active: boolean;
   onClick: () => void;
-  icon: string;
+  icon: TIcon;
   hasPanel?: boolean;
 }
 

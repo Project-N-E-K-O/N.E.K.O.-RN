@@ -49,11 +49,12 @@ export function useT(): TFunction {
  * Convention: if `t(key)` returns exactly `key`, treat it as missing.
  */
 export function tOrDefault(
-  t: TFunction,
+  t: TFunction | undefined,
   key: string,
   fallback: string,
   params?: Record<string, unknown>
 ): string {
+  if (!t) return fallback;
   try {
     const v = t(key, params);
     if (!v || v === key) return fallback;
