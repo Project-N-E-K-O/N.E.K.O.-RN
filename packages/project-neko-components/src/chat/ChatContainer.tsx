@@ -203,9 +203,10 @@ export default function ChatContainer({
 
       <ChatInput
         onSend={handleSend}
-        onTakePhoto={handleScreenshot}
-        pendingScreenshots={pendingScreenshots}
-        setPendingScreenshots={setPendingScreenshots}
+        // 受控模式下禁用截图功能（截图仅非受控模式可用）
+        onTakePhoto={isControlled ? undefined : handleScreenshot}
+        pendingScreenshots={isControlled ? undefined : pendingScreenshots}
+        setPendingScreenshots={isControlled ? undefined : setPendingScreenshots}
       />
     </div>
   );

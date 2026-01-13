@@ -109,13 +109,14 @@ export default function ChatContainer({
   // RN 发送处理（清空输入框）
   const handleSend = () => {
     const trimmed = inputValue.trim();
-    if (trimmed.length === 0 && pendingScreenshots.length === 0) return;
 
     if (isControlled && onSendText) {
-      // 受控模式：调用外部回调
+      // 受控模式：只处理文本（截图功能在受控模式下禁用）
+      if (trimmed.length === 0) return;
       onSendText(trimmed);
     } else {
-      // 非受控模式：使用内部逻辑
+      // 非受控模式：使用内部逻辑（支持截图）
+      if (trimmed.length === 0 && pendingScreenshots.length === 0) return;
       internalHandleSendText(trimmed);
     }
     setInputValue('');
@@ -285,15 +286,18 @@ export default function ChatContainer({
                     </Text>
                   </TouchableOpacity>
 
-                  <TouchableOpacity
-                    style={styles.screenshotButton}
-                    onPress={handleTakePhoto}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.screenshotButtonText}>
-                      {tOrDefault(t, 'chat.screenshot.button', '截图')}
-                    </Text>
-                  </TouchableOpacity>
+                  {/* 受控模式下隐藏截图按钮（截图功能仅非受控模式可用） */}
+                  {!isControlled && (
+                    <TouchableOpacity
+                      style={styles.screenshotButton}
+                      onPress={handleTakePhoto}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.screenshotButtonText}>
+                        {tOrDefault(t, 'chat.screenshot.button', '截图')}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </View>
             </View>
