@@ -105,6 +105,18 @@ const Modal = forwardRef<ModalHandle | null, {}>(function ModalComponent(_, ref)
   // 创建对话框的通用函数
   const createDialog = useCallback((config: DialogConfig): Promise<any> => {
     return new Promise((resolve) => {
+      // 如果有未完成的对话框，先结算其 Promise
+      const prev = dialogStateRef.current;
+      if (prev.resolve && prev.config) {
+        if (prev.config.type === 'prompt') {
+          prev.resolve(null);
+        } else if (prev.config.type === 'confirm') {
+          prev.resolve(false);
+        } else {
+          prev.resolve(true);
+        }
+      }
+
       if (config.type === 'prompt') {
         setPromptValue(config.defaultValue || '');
       }

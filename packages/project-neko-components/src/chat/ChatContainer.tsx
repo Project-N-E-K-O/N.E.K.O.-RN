@@ -93,12 +93,13 @@ export default function ChatContainer({
 
   // 统一的发送处理
   const handleSend = React.useCallback((text: string) => {
+    const trimmed = text.trim();
     if (isControlled && onSendText) {
       // 受控模式：调用外部回调
-      onSendText(text.trim());
+      onSendText(trimmed);
     } else {
       // 非受控模式：使用内部逻辑
-      internalHandleSendText(text);
+      internalHandleSendText(trimmed);
     }
   }, [isControlled, onSendText, internalHandleSendText]);
 

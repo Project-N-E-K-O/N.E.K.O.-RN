@@ -108,14 +108,15 @@ export default function ChatContainer({
 
   // RN 发送处理（清空输入框）
   const handleSend = () => {
-    if (!inputValue.trim() && pendingScreenshots.length === 0) return;
+    const trimmed = inputValue.trim();
+    if (trimmed.length === 0 && pendingScreenshots.length === 0) return;
 
     if (isControlled && onSendText) {
       // 受控模式：调用外部回调
-      onSendText(inputValue.trim());
+      onSendText(trimmed);
     } else {
       // 非受控模式：使用内部逻辑
-      internalHandleSendText(inputValue);
+      internalHandleSendText(trimmed);
     }
     setInputValue('');
   };
