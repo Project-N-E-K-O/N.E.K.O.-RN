@@ -1,12 +1,16 @@
 /**
  * ChatContainer - React Native 版本
- * 
+ *
  * 使用 React Native 组件实现的聊天界面：
  * - TouchableOpacity 浮动按钮（缩小态）
  * - Modal 聊天面板（展开态）
  * - ScrollView 消息列表
  * - TextInput 输入框
- * 
+ *
+ * 支持两种模式：
+ * 1. 非受控模式（默认）：组件内部管理消息状态
+ * 2. 受控模式：通过 props 传入 externalMessages 和 onSendText
+ *
  * @platform Android/iOS - 原生实现
  * @see ChatContainer.tsx - Web 版本（HTML/CSS 实现）
  */
@@ -24,18 +28,42 @@ import {
   Alert,
 } from 'react-native';
 import { useT, tOrDefault } from '../i18n';
-import { useChatState, useSendMessage, generateId } from './hooks';
-import type { ChatMessage } from './types';
+import { useChatState, useSendMessage } from './hooks';
+import type { ChatMessage, ExternalChatMessage, ChatContainerProps } from './types';
 import { styles } from './styles.native';
 
-export default function ChatContainer() {
+/**
+ * 将外部消息类型转换为内部 ChatMessage 类型
+ */
+function convertExternalMessage(msg: ExternalChatMessage): ChatMessage {
+  const roleMap: Record<ExternalChatMessage['sender'], ChatMessage['role']> = {
+    user: 'user',
+    gemini: 'assistant',
+    system: 'system',
+  };
+
+  return {
+    id: msg.id,
+    role: roleMap[msg.sender],
+    content: msg.text,
+    createdAt: new Date(msg.timestamp).getTime() || Date.now(),
+  };
+}
+
+export default function ChatContainer({
+  externalMessages,
+  onSendText
+}: ChatContainerProps = {}) {
   const t = useT();
 
-  // 使用共享的状态管理
+  // 判断是否为受控模式
+  const isControlled = externalMessages !== undefined;
+
+  // 使用共享的状态管理（非受控模式）
   const {
     collapsed,
     setCollapsed,
-    messages,
+    messages: internalMessages,
     setMessages,
     addMessages,
     pendingScreenshots,
@@ -45,9 +73,17 @@ export default function ChatContainer() {
   // 输入框状态
   const [inputValue, setInputValue] = React.useState('');
 
-  // 初始化欢迎消息
+  // 计算实际显示的消息列表
+  const displayMessages: ChatMessage[] = React.useMemo(() => {
+    if (isControlled && externalMessages) {
+      return externalMessages.map(convertExternalMessage);
+    }
+    return internalMessages;
+  }, [isControlled, externalMessages, internalMessages]);
+
+  // 初始化欢迎消息（仅非受控模式）
   React.useEffect(() => {
-    if (messages.length === 0) {
+    if (!isControlled && internalMessages.length === 0) {
       setMessages([
         {
           id: 'sys-1',
@@ -61,10 +97,10 @@ export default function ChatContainer() {
         },
       ]);
     }
-  }, [messages.length, setMessages, t]);
+  }, [isControlled, internalMessages.length, setMessages, t]);
 
-  // 发送消息逻辑
-  const { handleSendText } = useSendMessage(
+  // 发送消息逻辑（非受控模式）
+  const { handleSendText: internalHandleSendText } = useSendMessage(
     addMessages,
     pendingScreenshots,
     () => setPendingScreenshots([])
@@ -73,7 +109,14 @@ export default function ChatContainer() {
   // RN 发送处理（清空输入框）
   const handleSend = () => {
     if (!inputValue.trim() && pendingScreenshots.length === 0) return;
-    handleSendText(inputValue);
+
+    if (isControlled && onSendText) {
+      // 受控模式：调用外部回调
+      onSendText(inputValue.trim());
+    } else {
+      // 非受控模式：使用内部逻辑
+      internalHandleSendText(inputValue);
+    }
     setInputValue('');
   };
 
@@ -164,7 +207,7 @@ export default function ChatContainer() {
                 style={styles.messageList}
                 contentContainerStyle={styles.messageListContent}
               >
-                {messages.map(renderMessage)}
+                {displayMessages.map(renderMessage)}
               </ScrollView>
 
               {/* 待发送截图预览（RN 暂不支持） */}

@@ -10,8 +10,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Dimensions, Platform, StyleSheet, Text, View } from 'react-native';
 import { ReactNativeLive2dView } from 'react-native-live2d';
-import { 
-  Live2DRightToolbar, 
+import {
+  Live2DRightToolbar,
   ChatContainer,
   type Live2DRightToolbarPanel,
   type Live2DSettingsToggleId,
@@ -241,6 +241,23 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
     Alert.alert('功能提示', `即将打开: ${id}`);
   }, []);
 
+  // 处理用户发送文本消息
+  const handleSendText = useCallback((text: string) => {
+    if (!text.trim()) return;
+
+    // 1. 添加用户消息到 UI
+    chat.addMessage(text, 'user');
+
+    // 2. 通过 WS 发送到后端
+    // 格式参考 docs/specs/websocket.md
+    audio.sendMessage({
+      action: 'text_input',
+      text: text.trim(),
+    });
+
+    console.log('📤 发送文本消息:', text.substring(0, 50));
+  }, [chat.addMessage, audio.sendMessage]);
+
   // 检测屏幕尺寸变化
   useEffect(() => {
     const updateIsMobile = () => {
@@ -329,26 +346,30 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
         />
       </View>
 
-      {/* 
+      {/*
         【跨平台组件】ChatContainer 聊天容器
-        
+
         策略更新（2026-01-11）：
         - ✅ 已实现 RN 原生版本（ChatContainer.native.tsx）
         - ✅ 使用共享的类型和业务逻辑（types.ts + hooks.ts）
+        - ✅ 已接入主界面 WS 文本消息数据流（P0-1 & P0-2）
         - Metro Bundler 自动根据平台选择：
           * Web: ChatContainer.tsx（HTML/CSS 完整版，支持截图）
           * Android/iOS: ChatContainer.native.tsx（Modal 简化版）
         - 详见：docs/CROSS-PLATFORM-COMPONENT-STRATEGY.md
-        
+
         功能包括：
         - 浮动按钮（缩小态）
         - 聊天面板（展开态）
-        - 消息列表（用户/系统/助手角色）
-        - 文本输入
+        - 消息列表（用户/系统/助手角色）- 实时显示 WS 消息
+        - 文本输入 - 发送到后端
         - Web 平台支持截图功能
       */}
       <View style={styles.chatContainerWrapper}>
-        <ChatContainer />
+        <ChatContainer
+          externalMessages={chat.messages}
+          onSendText={handleSendText}
+        />
       </View>
     </View>
   );

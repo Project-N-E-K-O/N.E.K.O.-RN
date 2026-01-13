@@ -3,35 +3,72 @@ import MessageList from "./MessageList";
 import ChatInput from "./ChatInput";
 import { useT, tOrDefault } from "../i18n";
 import { useChatState, useSendMessage, useWebScreenshot } from "./hooks";
+import type { ChatMessage, ExternalChatMessage, ChatContainerProps } from "./types";
+
+/**
+ * 将外部消息类型转换为内部 ChatMessage 类型
+ */
+function convertExternalMessage(msg: ExternalChatMessage): ChatMessage {
+  const roleMap: Record<ExternalChatMessage['sender'], ChatMessage['role']> = {
+    user: 'user',
+    gemini: 'assistant',
+    system: 'system',
+  };
+
+  return {
+    id: msg.id,
+    role: roleMap[msg.sender],
+    content: msg.text,
+    createdAt: new Date(msg.timestamp).getTime() || Date.now(),
+  };
+}
 
 /**
  * ChatContainer - Web 版本
- * 
+ *
  * 使用 HTML/CSS 实现的聊天界面：
  * - 浮动按钮（缩小态）
  * - 完整聊天框（展开态）
  * - 支持 Web 截图功能（navigator.mediaDevices）
- * 
+ *
+ * 支持两种模式：
+ * 1. 非受控模式（默认）：组件内部管理消息状态
+ * 2. 受控模式：通过 props 传入 externalMessages 和 onSendText
+ *
  * @platform Web - 完整实现
  * @see ChatContainer.native.tsx - RN 版本（Modal 实现）
  */
-export default function ChatContainer() {
+export default function ChatContainer({
+  externalMessages,
+  onSendText,
+}: ChatContainerProps = {}) {
   const t = useT();
 
-  // 使用共享的状态管理
+  // 判断是否为受控模式
+  const isControlled = externalMessages !== undefined;
+
+  // 使用共享的状态管理（非受控模式）
   const {
     collapsed,
     setCollapsed,
-    messages,
+    messages: internalMessages,
     setMessages,
     addMessages,
     pendingScreenshots,
     setPendingScreenshots,
   } = useChatState();
 
-  // 初始化欢迎消息
+  // 计算实际显示的消息列表
+  const displayMessages: ChatMessage[] = React.useMemo(() => {
+    if (isControlled && externalMessages) {
+      return externalMessages.map(convertExternalMessage);
+    }
+    return internalMessages;
+  }, [isControlled, externalMessages, internalMessages]);
+
+  // 初始化欢迎消息（仅非受控模式）
   React.useEffect(() => {
-    if (messages.length === 0) {
+    if (!isControlled && internalMessages.length === 0) {
       setMessages([
         {
           id: "sys-1",
@@ -45,14 +82,25 @@ export default function ChatContainer() {
         },
       ]);
     }
-  }, [messages.length, setMessages, t]);
+  }, [isControlled, internalMessages.length, setMessages, t]);
 
-  // 发送消息逻辑
-  const { handleSendText } = useSendMessage(
+  // 发送消息逻辑（非受控模式）
+  const { handleSendText: internalHandleSendText } = useSendMessage(
     addMessages,
     pendingScreenshots,
     () => setPendingScreenshots([])
   );
+
+  // 统一的发送处理
+  const handleSend = React.useCallback((text: string) => {
+    if (isControlled && onSendText) {
+      // 受控模式：调用外部回调
+      onSendText(text.trim());
+    } else {
+      // 非受控模式：使用内部逻辑
+      internalHandleSendText(text);
+    }
+  }, [isControlled, onSendText, internalHandleSendText]);
 
   // Web 截图功能
   const { handleScreenshot } = useWebScreenshot(
@@ -149,11 +197,11 @@ export default function ChatContainer() {
       </div>
 
       <div style={{ flex: 1, overflowY: "auto" }}>
-        <MessageList messages={messages} />
+        <MessageList messages={displayMessages} />
       </div>
 
       <ChatInput
-        onSend={handleSendText}
+        onSend={handleSend}
         onTakePhoto={handleScreenshot}
         pendingScreenshots={pendingScreenshots}
         setPendingScreenshots={setPendingScreenshots}
