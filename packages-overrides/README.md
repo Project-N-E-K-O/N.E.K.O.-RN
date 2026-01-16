@@ -121,5 +121,5 @@ packages-overrides/
 
 ## 相关文档
 
-- [packages 同步流程](../docs/upstream-frontend-packages.md)
+- [packages 同步流程](../docs/upstream/frontend-packages.md)
 - [上游 packages 文档](../../N.E.K.O/docs/frontend/packages-sync-to-neko-rn.md)

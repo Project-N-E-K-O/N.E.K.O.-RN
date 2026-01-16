@@ -20,11 +20,11 @@
 - 协调：`MainManager`（Audio/Live2D 打断与反馈）
 
 规格：
-- `./modules/audio.md`
-- `./modules/live2d.md`
-- `./modules/coordination.md`
-- `./specs/websocket.md`
-- `./specs/states.md`
+- `../modules/audio.md`
+- `../modules/live2d.md`
+- `../modules/coordination.md`
+- `../specs/websocket.md`
+- `../specs/states.md`
 
 ---
 
@@ -35,22 +35,22 @@
 | Live2D 视图 | ✅ | 原生模块必需 |
 | Mic 上行 + 音频下行播放 | ✅ | `@project_neko/audio-service` 接管二进制播放 |
 | Live2DRightToolbar | ✅ | 已有 `.native.tsx`（简化版） |
-| ChatContainer | ⚠️ | 已有 `.native.tsx`（UI 已有），但需对齐 WS 文本消息数据流 |
-| Modal（Alert/Confirm/Prompt） | ⏳ | 当前为 Web-only（DOM/CSS），需 RN 版 |
-| StatusToast | ⏳ | 当前依赖 `react-dom`，需 RN 版 |
+| ChatContainer | ✅ | 已有 `.native.tsx`，并已接入主界面 WS 文本消息数据流 |
+| Modal（Alert/Confirm/Prompt） | ✅ | 已有 `index.native.tsx`，保持 Promise API 一致 |
+| StatusToast | ✅ | 已有 `.native.tsx`，使用 RN Animated 实现 |
 | Live2D 拖拽/缩放手势 | ⚠️ | 单指 SDK 交互 ✅；UI 手势映射到 `scale/position` ⏳ |
 
 ---
 
 ## 🚧 目前优先级（结论）
 
-详见：`./ANDROID-NEXT-STEPS.md`
+详见：`../roadmap/android.md`
 
 ---
 
 ## 🔗 相关文档（入口）
 
-- 跨平台组件策略：`./CROSS-PLATFORM-COMPONENT-STRATEGY.md`
-- Android 运行指南：`./ANDROID-PLATFORM-GUIDE.md`
-- 集成测试清单：`./integration-testing-guide.md`
+- 跨平台组件策略：`./cross-platform-components.md`
+- Android 运行指南：`../platforms/android.md`
+- 集成测试清单：`../testing/integration.md`
 

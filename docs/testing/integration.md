@@ -1,7 +1,7 @@
 # N.E.K.O.-RN 集成测试指南（当前状态）
 
 本文档仅保留 **当前仓库（Android 真机优先）** 的可执行验收清单。  
-排查请移步：`./guide/troubleshooting.md`。
+排查请移步：`../guides/troubleshooting.md`。
 
 ---
 
@@ -9,13 +9,11 @@
 
 - **后端**：启动 N.E.K.O 主服务器（默认 `48911`），并确保 WebSocket `/ws/{characterName}` 可达。
 - **RN 配置**：确认 `useDevConnectionConfig`（host/port/characterName）已指向可访问的后端。
-- **网络**：
-  - Android 模拟器：`10.0.2.2`
-  - Android 真机：电脑局域网 IP（必要时用 `adb reverse`）
+- **网络**：按 `../platforms/android.md` 的“网络配置（关键）”设置（模拟器 `10.0.2.2`；真机局域网 IP，必要时 `adb reverse`）。
 
 参考：
-- `./ANDROID-PLATFORM-GUIDE.md`（环境/运行/网络）
-- `./specs/websocket.md`（协议）
+- `../platforms/android.md`（环境/运行/网络）
+- `../specs/websocket.md`（协议）
 
 ---
 
@@ -48,9 +46,9 @@
 
 参考：`./modules/live2d.md`
 
-### 5) Chat UI（当前缺口说明）
-- [ ] **当前可测**：WS 文本消息解析与状态更新（`hooks/useChatMessages.ts`）
-- [ ] **待对齐**：`ChatContainer.native.tsx` UI 展示真实 WS 消息（而非 Demo 自维护消息）
+### 5) Chat UI（展示/发送）
+- [ ] WS 文本消息能在 `ChatContainer.native.tsx` 中正确展示（含流式追加场景）
+- [ ] 手动输入并发送文本：能触发后端回复（与 Web 流程一致）
 
-路线图：`./ANDROID-NEXT-STEPS.md`（P0）
+路线图：`../roadmap/android.md`
 

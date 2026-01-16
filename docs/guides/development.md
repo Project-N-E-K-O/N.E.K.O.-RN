@@ -6,7 +6,7 @@
 
 ## ✅ 开发前置
 
-- Android 环境/网络：`../ANDROID-PLATFORM-GUIDE.md`
+- Android 环境/网络：`../platforms/android.md`
 - 常见问题：`./troubleshooting.md`
 - 上游 packages 同步：`./upstream-sync.md`
 
@@ -17,8 +17,10 @@
 ```bash
 npm install
 
-# Android Dev Client（推荐）
-npx expo run:android
+# Android（真机，本地出 APK）
+npx expo prebuild --platform android --clean
+npm i
+npx eas build --profile development --platform android --local
 
 # Metro
 npm start
@@ -36,6 +38,6 @@ npm run typecheck
 - [ ] **打断**：用户说话/收到 `user_activity` 能停止播放并进入下一轮
 - [ ] **LipSync**：播放音频时嘴巴随振幅变化
 
-完整清单：`../integration-testing-guide.md`  
-路线图：`../ANDROID-NEXT-STEPS.md`
+完整清单：`../testing/integration.md`  
+路线图：`../roadmap/android.md`
 

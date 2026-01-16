@@ -315,7 +315,7 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
         - Metro Bundler 自动根据平台选择：
           * Web: Live2DRightToolbar.tsx（HTML/CSS 完整版）
           * Android/iOS: Live2DRightToolbar.native.tsx（Modal 简化版）
-        - 详见：docs/CROSS-PLATFORM-COMPONENT-STRATEGY.md
+        - 详见：docs/strategy/cross-platform-components.md
         
         功能包括：
         - 麦克风/屏幕共享切换
@@ -356,7 +356,7 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
         - Metro Bundler 自动根据平台选择：
           * Web: ChatContainer.tsx（HTML/CSS 完整版，支持截图）
           * Android/iOS: ChatContainer.native.tsx（Modal 简化版）
-        - 详见：docs/CROSS-PLATFORM-COMPONENT-STRATEGY.md
+        - 详见：docs/strategy/cross-platform-components.md
 
         功能包括：
         - 浮动按钮（缩小态）

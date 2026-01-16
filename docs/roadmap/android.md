@@ -3,6 +3,8 @@
 **文档日期**：2026-01-11  
 **目标**：在 Android（RN 真机）实现与 `@N.E.K.O/docs/frontend` 对齐的核心体验与整体流程闭环。
 
+前置：macOS（zsh）环境搭建（Android SDK / JDK17 / 验证命令）：`../guides/android-env-macos.md`
+
 ---
 
 ## 0. 当前状态（结论）

@@ -54,5 +54,5 @@ Component/
 - [ ] types/hooks 是否可在 Web/RN 共用（不引入 DOM / react-dom / window）？
 - [ ] 是否提供 `.native.tsx`（Android 真机可运行）？
 - [ ] RN 入口（`index.native.ts`）是否避免导出 Web-only 实现？
-- [ ] 是否更新 `./RN-DEVELOPMENT-STRATEGY.md` 的组件矩阵（仅写结论，不写改动过程）？
+- [ ] 是否更新 `./rn-development.md` 的组件矩阵（仅写结论，不写改动过程）？
 

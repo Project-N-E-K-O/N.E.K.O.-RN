@@ -53,7 +53,7 @@ function isSkippableTarget(t) {
 
 function main() {
   const rnRoot = path.resolve(__dirname, "..");
-  const entry = path.join(rnRoot, "docs", "upstream-frontend-packages.md");
+  const entry = path.join(rnRoot, "docs", "upstream", "frontend-packages.md");
 
   if (!fileExists(entry)) {
     console.error(`[check-upstream-docs] missing entry doc: ${entry}`);
