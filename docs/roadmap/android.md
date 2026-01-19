@@ -1,6 +1,6 @@
 # Android 端下一步路线图（对齐 N.E.K.O Web 前端体验）
 
-**文档日期**：2026-01-11  
+**文档日期**：2026-01-18（更新）
 **目标**：在 Android（RN 真机）实现与 `@N.E.K.O/docs/frontend` 对齐的核心体验与整体流程闭环。
 
 前置：macOS（zsh）环境搭建（Android SDK / JDK17 / 验证命令）：`../guides/android-env-macos.md`
@@ -12,21 +12,27 @@
 - **核心链路已跑通**：Live2D（原生）+ WS（realtime）+ 音频上下行（`@project_neko/audio-service` + `react-native-pcm-stream`）+ LipSync + MainManager 协调。
 - **UI 现状**：
   - `Live2DRightToolbar`：已有 RN 版本（`.native.tsx`），Android 可用。
-  - `ChatContainer`：已有 RN 版本（`.native.tsx`），但当前仍是“迁移 Demo（自维护消息）”，**尚未接入主界面 WS 文本消息数据流**。
+  - `ChatContainer`：✅ **已完成 WS 集成**（2026-01-18），支持文本消息流式显示、截图/拍照发送、连接状态指示。
   - `Modal` / `StatusToast`：当前实现依赖 `react-dom`（Web-only），Android 需要补齐 `.native.tsx` 或 RN 入口避免导出。
 
 ---
 
 ## 1. 优先级（按依赖关系排序）
 
-### P0：主界面“字幕/聊天”闭环（Android 体验最关键缺口）
+### P0：主界面"字幕/聊天"闭环（Android 体验最关键缺口）✅ 已完成
 
-- **P0-1**：把主界面的 WS 文本消息（`hooks/useChatMessages.ts`）接入 `ChatContainer.native.tsx` 的 UI 展示。
-  - 推荐方案：让 `ChatContainer` 支持“受控 props”（`messages/onSend/...`），或统一成一个共享 store。
+- **P0-1**：✅ 把主界面的 WS 文本消息接入 `ChatContainer.native.tsx` 的 UI 展示。
+  - 方案：`ChatContainer` 支持受控 props（`externalMessages/onSendMessage/connectionStatus`）。
   - 验收：`gemini_response` 流式追加能在 UI 上逐字增长；`turn end` 后标记完成。
+  - **相关文档**：[Chat Text Conversation Feature Spec](../../N.E.K.O/docs/frontend/spec/chat-text-conversation.md)
 
-- **P0-2**：把“发送文本”打通到后端（与 Web 侧流程对齐）。
-  - 验收：用户输入能触发后端回复（至少能走同一条 WS 或 HTTP→WS 的链路）。
+- **P0-2**：✅ 把"发送文本"打通到后端（与 Web 侧流程对齐）。
+  - 验收：用户输入能触发后端回复（走 WS `stream_data` action）。
+  - **新增特性**：
+    - 移动端拍照支持（`getUserMedia` + 优先后置摄像头）
+    - `clientMessageId` 消息去重机制
+    - Ref 模式防止 WebSocket 重连
+  - **相关文档**：[WebSocket 稳定性改进总结](../../N.E.K.O/docs/frontend/SUMMARY-websocket-stability-improvements-2026-01-18.md)
 
 ### P1：Toast/Modal 原生化（让 Android 交互体验可用且一致）
 

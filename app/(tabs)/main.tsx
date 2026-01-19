@@ -17,10 +17,15 @@ import {
   type Live2DSettingsToggleId,
   type Live2DSettingsState,
   type Live2DAgentToggleId,
+  type ConnectionStatus,
 } from '@project_neko/components';
 
 interface MainUIScreenProps { }
 
+// 生成消息 ID
+function generateMessageId(counter: number): string {
+  return `msg-${Date.now()}-${counter}`;
+}
 
 const MainUIScreen: React.FC<MainUIScreenProps> = () => {
 
@@ -39,6 +44,10 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
     proactiveChat: false,
     proactiveVision: false,
   });
+
+  // 消息去重：跟踪已发送消息的 clientMessageId
+  const sentClientMessageIds = useRef<Set<string>>(new Set());
+  const messageCounterRef = useRef(0);
 
   // Agent Backend 管理（传入 openPanel 以支持动态刷新）
   const { agent, onAgentChange, refreshAgentState } = useLive2DAgentBackend({
@@ -65,6 +74,19 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
       // 这里仅保留文本消息处理逻辑
       if (typeof event.data !== 'string') return;
 
+      // 检查 clientMessageId 用于去重
+      try {
+        const msg = JSON.parse(event.data);
+        const clientMessageId = msg?.clientMessageId as string | undefined;
+        if (clientMessageId && sentClientMessageIds.current.has(clientMessageId)) {
+          // 服务器回显，跳过处理
+          sentClientMessageIds.current.delete(clientMessageId);
+          return;
+        }
+      } catch {
+        // 非 JSON 消息，继续处理
+      }
+
       // 处理文本消息并通过 MainManager 协调
       const result = await chat.handleWebSocketMessage(event);
 
@@ -85,6 +107,9 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
       }
     }
   });
+
+  // 将 audio.connectionStatus 映射到 ConnectionStatus 类型
+  const connectionStatus: ConnectionStatus = audio.isConnected ? 'open' : 'closed';
 
   const live2d = useLive2D({
     modelName: 'mao_pro',
@@ -241,22 +266,51 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
     Alert.alert('功能提示', `即将打开: ${id}`);
   }, []);
 
-  // 处理用户发送文本消息
-  const handleSendText = useCallback((text: string) => {
-    if (!text.trim()) return;
+  // 处理用户发送消息（文本 + 可选图片）
+  // 使用 stream_data action 和 clientMessageId 与 N.E.K.O 协议一致
+  const handleSendMessage = useCallback((text: string, images?: string[]) => {
+    if (!audio.isConnected) {
+      Alert.alert('提示', '未连接到服务器');
+      return;
+    }
 
-    // 1. 添加用户消息到 UI
-    chat.addMessage(text, 'user');
+    // 先发送图片（每张单独发送）
+    if (images && images.length > 0) {
+      for (const imgBase64 of images) {
+        messageCounterRef.current += 1;
+        const clientMessageId = generateMessageId(messageCounterRef.current);
+        sentClientMessageIds.current.add(clientMessageId);
 
-    // 2. 通过 WS 发送到后端
-    // 格式参考 docs/specs/websocket.md
-    audio.sendMessage({
-      action: 'text_input',
-      text: text.trim(),
-    });
+        audio.sendMessage({
+          action: 'stream_data',
+          data: imgBase64,
+          input_type: 'camera', // RN 使用 camera（拍照）
+          clientMessageId,
+        });
+      }
+      chat.addMessage(`📸 [已发送${images.length}张照片]`, 'user');
+    }
 
-    console.log('📤 发送文本消息:', text.substring(0, 50));
-  }, [chat.addMessage, audio.sendMessage]);
+    // 再发送文本
+    if (text.trim()) {
+      messageCounterRef.current += 1;
+      const clientMessageId = generateMessageId(messageCounterRef.current);
+      sentClientMessageIds.current.add(clientMessageId);
+
+      // 添加用户消息到 UI
+      chat.addMessage(text, 'user');
+
+      // 通过 WS 发送到后端（使用 stream_data action，与 N.E.K.O 协议一致）
+      audio.sendMessage({
+        action: 'stream_data',
+        data: text.trim(),
+        input_type: 'text',
+        clientMessageId,
+      });
+
+      console.log('📤 发送文本消息:', text.substring(0, 50));
+    }
+  }, [audio.isConnected, audio.sendMessage, chat.addMessage]);
 
   // 检测屏幕尺寸变化
   useEffect(() => {
@@ -368,7 +422,9 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
       <View style={styles.chatContainerWrapper}>
         <ChatContainer
           externalMessages={chat.messages}
-          onSendText={handleSendText}
+          connectionStatus={connectionStatus}
+          onSendMessage={handleSendMessage}
+          disabled={!audio.isConnected}
         />
       </View>
     </View>

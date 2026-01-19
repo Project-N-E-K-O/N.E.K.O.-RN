@@ -31,14 +31,67 @@ Component/
 
 ---
 
-## 📌 当前仓库落地位置（作为“事实来源”）
+## 📌 当前仓库落地位置（作为"事实来源"）
 
 - `packages/project-neko-components/src/Live2DRightToolbar/`
   - 已有 `Live2DRightToolbar.native.tsx`
 - `packages/project-neko-components/src/chat/`
   - 已有 `ChatContainer.native.tsx`
 
-> 注意：Chat 的 RN UI 已存在，但仍需与主界面 WS 文本消息数据流对齐（见 `./ANDROID-NEXT-STEPS.md`）。
+---
+
+## 🔄 ChatContainer 与 N.E.K.O 同步状态（2026-01-19）
+
+ChatContainer 组件已与 N.E.K.O/frontend 保持一致：
+
+### 新增功能
+
+| 功能 | Web | RN | 说明 |
+|------|:---:|:--:|------|
+| `onSendMessage` | ✅ | ✅ | 新接口，支持文本 + 图片 |
+| `connectionStatus` | ✅ | ✅ | 连接状态指示器 |
+| `disabled` | ✅ | ✅ | 禁用输入状态 |
+| `statusText` | ✅ | ✅ | 自定义状态文本 |
+| 截图/拍照 | ✅ | ⚠️ | RN 需集成 image-picker |
+
+### 消息协议
+
+与 N.E.K.O 保持一致的 WebSocket 消息协议：
+
+```typescript
+// 发送文本
+{
+  action: "stream_data",
+  data: "用户输入",
+  input_type: "text",
+  clientMessageId: "msg-1737123456789-1"
+}
+
+// 发送图片
+{
+  action: "stream_data",
+  data: "data:image/jpeg;base64,...",
+  input_type: "camera",  // RN 使用 camera
+  clientMessageId: "msg-1737123456789-2"
+}
+```
+
+### 消息去重
+
+使用 `clientMessageId` 防止服务器回显导致消息重复：
+
+```typescript
+const sentClientMessageIds = useRef<Set<string>>(new Set());
+
+// 发送时
+sentClientMessageIds.current.add(clientMessageId);
+
+// 接收时
+if (sentClientMessageIds.current.has(clientMessageId)) {
+  sentClientMessageIds.current.delete(clientMessageId);
+  return; // 跳过服务器回显
+}
+```
 
 ---
 
@@ -56,3 +109,10 @@ Component/
 - [ ] RN 入口（`index.native.ts`）是否避免导出 Web-only 实现？
 - [ ] 是否更新 `./rn-development.md` 的组件矩阵（仅写结论，不写改动过程）？
 
+---
+
+## 📚 相关文档
+
+- [Chat Text Conversation Spec](../../N.E.K.O/docs/frontend/spec/chat-text-conversation.md)
+- [WebSocket 稳定性改进](../../N.E.K.O/docs/frontend/SUMMARY-websocket-stability-improvements-2026-01-18.md)
+- [Components 包文档](../../N.E.K.O/docs/frontend/packages/components.md)

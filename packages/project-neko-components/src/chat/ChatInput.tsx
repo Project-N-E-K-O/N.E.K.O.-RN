@@ -9,20 +9,31 @@ interface Props {
   setPendingScreenshots?: React.Dispatch<
     React.SetStateAction<PendingScreenshot[]>
   >;
+  disabled?: boolean;
 }
 
 const MAX_SCREENSHOTS = 5;
+
+/** 检测是否为移动端 */
+function isMobile(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    navigator.userAgent
+  );
+}
 
 export default function ChatInput({
   onSend,
   onTakePhoto,
   pendingScreenshots,
   setPendingScreenshots,
+  disabled = false,
 }: Props) {
   const t = useT();
   const [value, setValue] = useState("");
 
   async function handleSend() {
+    if (disabled) return;
     if (!value.trim() && (!pendingScreenshots || pendingScreenshots.length === 0))
       return;
     onSend(value);
@@ -30,6 +41,7 @@ export default function ChatInput({
   }
 
   async function handleTakePhoto() {
+    if (disabled) return;
     if (pendingScreenshots && pendingScreenshots.length >= MAX_SCREENSHOTS) {
       // TODO: replace with toast / notification
       console.warn(
@@ -45,7 +57,10 @@ export default function ChatInput({
     await onTakePhoto?.();
   }
 
-
+  // 移动端显示"拍照"，桌面端显示"截图"
+  const photoButtonLabel = isMobile()
+    ? tOrDefault(t, "chat.screenshot.button.mobile", "拍照")
+    : tOrDefault(t, "chat.screenshot.button", "截图");
 
   return (
     <div
@@ -56,6 +71,7 @@ export default function ChatInput({
         display: "flex",
         flexDirection: "column",
         gap: 8,
+        opacity: disabled ? 0.6 : 1,
       }}
     >
       {/* Pending Screenshots */}
@@ -81,13 +97,14 @@ export default function ChatInput({
             <button
               onClick={() => setPendingScreenshots?.([])}
               aria-label={tOrDefault(t, "chat.screenshot.clearAll", "清除全部截图")}
+              disabled={disabled}
               style={{
-                background: "#ff4d4f",
+                background: disabled ? "#d9d9d9" : "#ff4d4f",
                 color: "#fff",
                 border: "none",
                 borderRadius: 4,
                 padding: "2px 6px",
-                cursor: "pointer",
+                cursor: disabled ? "not-allowed" : "pointer",
               }}
             >
               {tOrDefault(t, "chat.screenshot.clearAll", "清除全部")}
@@ -114,6 +131,7 @@ export default function ChatInput({
                     )
                   }
                   aria-label={tOrDefault(t, "chat.screenshot.remove", "删除截图")}
+                  disabled={disabled}
                   style={{
                     position: "absolute",
                     top: -6,
@@ -122,9 +140,9 @@ export default function ChatInput({
                     height: 16,
                     borderRadius: "50%",
                     border: "none",
-                    background: "#ff4d4f",
+                    background: disabled ? "#d9d9d9" : "#ff4d4f",
                     color: "#fff",
-                    cursor: "pointer",
+                    cursor: disabled ? "not-allowed" : "pointer",
                     fontSize: 10,
                     lineHeight: "16px",
                   }}
@@ -155,18 +173,21 @@ export default function ChatInput({
             "chat.input.placeholder",
             "Text chat mode...Press Enter to send, Shift+Enter for new line"
           )}
+          disabled={disabled}
           style={{
             flex: 1,
             resize: "none",
             border: "1px solid rgba(0,0,0,0.1)",
             borderRadius: 6,
             padding: "10px 12px",
-            background: "rgba(255,255,255,0.8)",
+            background: disabled ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.8)",
             fontFamily: "inherit",
             fontSize: "0.9rem",
             lineHeight: "1.4",
             height: "100%",          // ⭐关键
             boxSizing: "border-box", // ⭐关键
+            cursor: disabled ? "not-allowed" : "text",
+            color: disabled ? "#999" : "inherit",
           }}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
@@ -187,13 +208,14 @@ export default function ChatInput({
         >
           <button
             onClick={handleSend}
+            disabled={disabled}
             style={{
               flex: 1, // ⭐均分高度
-              background: "#44b7fe",
+              background: disabled ? "#d9d9d9" : "#44b7fe",
               color: "white",
               border: "none",
               borderRadius: 6,
-              cursor: "pointer",
+              cursor: disabled ? "not-allowed" : "pointer",
               fontSize: "0.9rem",
             }}
           >
@@ -203,17 +225,18 @@ export default function ChatInput({
           {onTakePhoto && (
             <button
               onClick={handleTakePhoto}
+              disabled={disabled}
               style={{
                 flex: 1, // ⭐均分高度
                 background: "rgba(255,255,255,0.8)",
-                border: "1px solid #44b7fe",
-                color: "#44b7fe",
+                border: `1px solid ${disabled ? "#d9d9d9" : "#44b7fe"}`,
+                color: disabled ? "#d9d9d9" : "#44b7fe",
                 borderRadius: 6,
-                cursor: "pointer",
+                cursor: disabled ? "not-allowed" : "pointer",
                 fontSize: "0.8rem",
               }}
             >
-              {tOrDefault(t, "chat.screenshot.button", "截图")}
+              {photoButtonLabel}
             </button>
           )}
         </div>

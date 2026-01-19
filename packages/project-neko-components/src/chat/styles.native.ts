@@ -82,6 +82,26 @@ export const styles = StyleSheet.create({
     color: '#333',
   },
 
+  // 连接状态指示器容器
+  headerStatusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+
+  // 连接状态指示器圆点
+  headerStatusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+
+  // 连接状态文本
+  headerStatusText: {
+    fontSize: 12,
+    color: '#666',
+  },
+
   minimizeButton: {
     width: 28,
     height: 28,
@@ -267,5 +287,27 @@ export const styles = StyleSheet.create({
     fontSize: 13,
     color: '#44b7fe',
     fontWeight: '500',
+  },
+
+  // ===== 禁用状态 =====
+  textInputDisabled: {
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    color: '#999',
+  },
+
+  sendButtonDisabled: {
+    backgroundColor: '#d9d9d9',
+  },
+
+  sendButtonTextDisabled: {
+    color: '#999',
+  },
+
+  screenshotButtonDisabled: {
+    borderColor: '#d9d9d9',
+  },
+
+  screenshotButtonTextDisabled: {
+    color: '#d9d9d9',
   },
 });

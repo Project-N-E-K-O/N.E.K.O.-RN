@@ -6,10 +6,12 @@
  * - Modal 聊天面板（展开态）
  * - ScrollView 消息列表
  * - TextInput 输入框
+ * - 连接状态指示器
+ * - 相机拍照功能（移动端）
  *
  * 支持两种模式：
  * 1. 非受控模式（默认）：组件内部管理消息状态
- * 2. 受控模式：通过 props 传入 externalMessages 和 onSendText
+ * 2. 受控模式：通过 props 传入 externalMessages 和 onSendMessage
  *
  * @platform Android/iOS - 原生实现
  * @see ChatContainer.tsx - Web 版本（HTML/CSS 实现）
@@ -26,11 +28,18 @@ import {
   TouchableWithoutFeedback,
   Image,
   Alert,
+  PermissionsAndroid,
+  Platform,
 } from 'react-native';
 import { useT, tOrDefault } from '../i18n';
 import { useChatState, useSendMessage } from './hooks';
-import type { ChatMessage, ExternalChatMessage, ChatContainerProps } from './types';
+import type { ChatMessage, ExternalChatMessage, ChatContainerProps, ConnectionStatus } from './types';
 import { styles } from './styles.native';
+
+// 可选：如果安装了 react-native-camera 或 expo-camera，可以启用相机功能
+// import { launchCamera } from 'react-native-image-picker';
+
+const MAX_SCREENSHOTS = 5;
 
 /**
  * 将外部消息类型转换为内部 ChatMessage 类型
@@ -50,14 +59,60 @@ function convertExternalMessage(msg: ExternalChatMessage): ChatMessage {
   };
 }
 
+/**
+ * 获取连接状态指示器颜色
+ */
+function getStatusColor(status: ConnectionStatus): string {
+  switch (status) {
+    case 'open':
+      return '#52c41a'; // green
+    case 'connecting':
+    case 'reconnecting':
+    case 'closing':
+      return '#faad14'; // yellow
+    case 'closed':
+      return '#ff4d4f'; // red
+    default:
+      return '#d9d9d9'; // gray
+  }
+}
+
+/**
+ * 获取连接状态文本
+ */
+function getStatusText(status: ConnectionStatus, customText?: string, t?: any): string {
+  if (customText) return customText;
+  switch (status) {
+    case 'open':
+      return tOrDefault(t, 'chat.status.connected', '已连接');
+    case 'connecting':
+      return tOrDefault(t, 'chat.status.connecting', '连接中...');
+    case 'reconnecting':
+      return tOrDefault(t, 'chat.status.reconnecting', '重连中...');
+    case 'closing':
+      return tOrDefault(t, 'chat.status.closing', '断开中...');
+    case 'closed':
+      return tOrDefault(t, 'chat.status.disconnected', '已断开');
+    default:
+      return tOrDefault(t, 'chat.status.idle', '待连接');
+  }
+}
+
 export default function ChatContainer({
   externalMessages,
-  onSendText
+  onSendMessage,
+  onSendText, // deprecated, for backward compatibility
+  connectionStatus = 'idle',
+  disabled = false,
+  statusText,
 }: ChatContainerProps = {}) {
   const t = useT();
 
   // 判断是否为受控模式
   const isControlled = externalMessages !== undefined;
+
+  // 使用 onSendMessage 或 deprecated 的 onSendText
+  const sendHandler = onSendMessage || (onSendText ? (text: string) => onSendText(text) : undefined);
 
   // 使用共享的状态管理（非受控模式）
   const {
@@ -108,12 +163,24 @@ export default function ChatContainer({
 
   // RN 发送处理（清空输入框）
   const handleSend = () => {
-    const trimmed = inputValue.trim();
+    if (disabled) return;
 
-    if (isControlled && onSendText) {
-      // 受控模式：只处理文本（截图功能在受控模式下禁用）
-      if (trimmed.length === 0) return;
-      onSendText(trimmed);
+    const trimmed = inputValue.trim();
+    const images = pendingScreenshots.map(p => p.base64);
+
+    if (sendHandler) {
+      // 受控模式：使用新的 onSendMessage 或旧的 onSendText
+      if (trimmed.length === 0 && images.length === 0) return;
+
+      if (onSendMessage) {
+        // 新接口：支持图片
+        onSendMessage(trimmed, images.length > 0 ? images : undefined);
+      } else if (onSendText && trimmed.length > 0) {
+        // 旧接口：只支持文本
+        onSendText(trimmed);
+      }
+
+      setPendingScreenshots([]);
     } else {
       // 非受控模式：使用内部逻辑（支持截图）
       if (trimmed.length === 0 && pendingScreenshots.length === 0) return;
@@ -122,22 +189,97 @@ export default function ChatContainer({
     setInputValue('');
   };
 
-  // RN 暂不支持截图功能
+  // RN 相机拍照功能
   const handleTakePhoto = async () => {
+    if (disabled) return;
+
+    if (pendingScreenshots.length >= MAX_SCREENSHOTS) {
+      Alert.alert(
+        tOrDefault(t, 'chat.screenshot.title', '拍照'),
+        tOrDefault(t, 'chat.screenshot.maxReached', `最多只能添加 ${MAX_SCREENSHOTS} 张照片`)
+      );
+      return;
+    }
+
+    // 检查相机权限（Android）
+    if (Platform.OS === 'android') {
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.CAMERA,
+          {
+            title: tOrDefault(t, 'chat.camera.permission.title', '相机权限'),
+            message: tOrDefault(t, 'chat.camera.permission.message', '需要相机权限来拍照'),
+            buttonNeutral: tOrDefault(t, 'chat.camera.permission.later', '稍后'),
+            buttonNegative: tOrDefault(t, 'chat.camera.permission.cancel', '取消'),
+            buttonPositive: tOrDefault(t, 'chat.camera.permission.ok', '确定'),
+          }
+        );
+        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+          Alert.alert(
+            tOrDefault(t, 'chat.camera.permission.denied.title', '权限被拒绝'),
+            tOrDefault(t, 'chat.camera.permission.denied.message', '无法访问相机，请在设置中允许相机权限')
+          );
+          return;
+        }
+      } catch (err) {
+        console.warn('[ChatContainer] Camera permission error:', err);
+        return;
+      }
+    }
+
+    // TODO: 集成 react-native-image-picker 或 expo-image-picker
+    // 目前显示提示信息
     Alert.alert(
-      tOrDefault(t, 'chat.screenshot.title', '截图功能'),
+      tOrDefault(t, 'chat.camera.title', '相机功能'),
       tOrDefault(
         t,
-        'chat.screenshot.unavailable',
-        'RN 版本暂不支持截图功能，请在 Web 版本中使用'
-      )
+        'chat.camera.not_implemented',
+        '相机功能需要安装 react-native-image-picker 或 expo-image-picker。\n\n请参考文档进行集成。'
+      ),
+      [
+        {
+          text: tOrDefault(t, 'chat.camera.ok', '确定'),
+        },
+      ]
     );
+
+    /*
+    // 示例：使用 react-native-image-picker
+    try {
+      const result = await launchCamera({
+        mediaType: 'photo',
+        quality: 0.8,
+        maxWidth: 1280,
+        maxHeight: 720,
+        includeBase64: true,
+      });
+
+      if (result.didCancel) return;
+      if (result.errorCode) {
+        console.error('[ChatContainer] Camera error:', result.errorMessage);
+        Alert.alert('拍照失败', result.errorMessage || '未知错误');
+        return;
+      }
+
+      const asset = result.assets?.[0];
+      if (asset?.base64) {
+        const base64 = `data:${asset.type || 'image/jpeg'};base64,${asset.base64}`;
+        setPendingScreenshots(prev => [
+          ...prev,
+          { id: `photo-${Date.now()}`, base64 },
+        ]);
+      }
+    } catch (err) {
+      console.error('[ChatContainer] Camera error:', err);
+      Alert.alert('拍照失败', '无法访问相机');
+    }
+    */
   };
 
   // 渲染单个消息
   const renderMessage = (msg: ChatMessage) => {
     const isUser = msg.role === 'user';
-    
+
     return (
       <View
         key={msg.id}
@@ -192,9 +334,25 @@ export default function ChatContainer({
             <View style={styles.chatPanel}>
               {/* Header */}
               <View style={styles.header}>
-                <Text style={styles.headerTitle}>
-                  {tOrDefault(t, 'chat.title', '💬 Chat')}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Text style={styles.headerTitle}>
+                    {tOrDefault(t, 'chat.title', '💬 Chat')}
+                  </Text>
+                  {/* 连接状态指示器 - 仅在受控模式下显示 */}
+                  {sendHandler && (
+                    <View style={styles.headerStatusContainer}>
+                      <View
+                        style={[
+                          styles.headerStatusDot,
+                          { backgroundColor: getStatusColor(connectionStatus) },
+                        ]}
+                      />
+                      <Text style={styles.headerStatusText}>
+                        {getStatusText(connectionStatus, statusText, t)}
+                      </Text>
+                    </View>
+                  )}
+                </View>
                 <TouchableOpacity
                   style={styles.minimizeButton}
                   onPress={() => setCollapsed(true)}
@@ -212,7 +370,7 @@ export default function ChatContainer({
                 {displayMessages.map(renderMessage)}
               </ScrollView>
 
-              {/* 待发送截图预览（RN 暂不支持） */}
+              {/* 待发送截图预览 */}
               {pendingScreenshots.length > 0 && (
                 <View style={styles.pendingContainer}>
                   <View style={styles.pendingHeader}>
@@ -220,7 +378,7 @@ export default function ChatContainer({
                       {tOrDefault(
                         t,
                         'chat.screenshot.pending',
-                        `📸 待发送截图 (${pendingScreenshots.length})`
+                        `📸 待发送照片 (${pendingScreenshots.length})`
                       )}
                     </Text>
                     <TouchableOpacity
@@ -262,7 +420,10 @@ export default function ChatContainer({
               {/* 输入区域 */}
               <View style={styles.inputContainer}>
                 <TextInput
-                  style={styles.textInput}
+                  style={[
+                    styles.textInput,
+                    disabled && styles.textInputDisabled,
+                  ]}
                   value={inputValue}
                   onChangeText={setInputValue}
                   placeholder={tOrDefault(
@@ -273,28 +434,47 @@ export default function ChatContainer({
                   placeholderTextColor="rgba(0, 0, 0, 0.4)"
                   multiline
                   blurOnSubmit={false}
+                  editable={!disabled}
                 />
 
                 <View style={styles.buttonGroup}>
                   <TouchableOpacity
-                    style={styles.sendButton}
+                    style={[
+                      styles.sendButton,
+                      disabled && styles.sendButtonDisabled,
+                    ]}
                     onPress={handleSend}
                     activeOpacity={0.7}
+                    disabled={disabled}
                   >
-                    <Text style={styles.sendButtonText}>
+                    <Text
+                      style={[
+                        styles.sendButtonText,
+                        disabled && styles.sendButtonTextDisabled,
+                      ]}
+                    >
                       {tOrDefault(t, 'chat.send', '发送')}
                     </Text>
                   </TouchableOpacity>
 
-                  {/* 受控模式下隐藏截图按钮（截图功能仅非受控模式可用） */}
-                  {!isControlled && (
+                  {/* 拍照按钮 - 支持 onSendMessage 的受控模式或非受控模式 */}
+                  {(onSendMessage || !sendHandler) && (
                     <TouchableOpacity
-                      style={styles.screenshotButton}
+                      style={[
+                        styles.screenshotButton,
+                        disabled && styles.screenshotButtonDisabled,
+                      ]}
                       onPress={handleTakePhoto}
                       activeOpacity={0.7}
+                      disabled={disabled}
                     >
-                      <Text style={styles.screenshotButtonText}>
-                        {tOrDefault(t, 'chat.screenshot.button', '截图')}
+                      <Text
+                        style={[
+                          styles.screenshotButtonText,
+                          disabled && styles.screenshotButtonTextDisabled,
+                        ]}
+                      >
+                        {tOrDefault(t, 'chat.screenshot.button', '拍照')}
                       </Text>
                     </TouchableOpacity>
                   )}

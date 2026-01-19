@@ -35,7 +35,7 @@
 | Live2D 视图 | ✅ | 原生模块必需 |
 | Mic 上行 + 音频下行播放 | ✅ | `@project_neko/audio-service` 接管二进制播放 |
 | Live2DRightToolbar | ✅ | 已有 `.native.tsx`（简化版） |
-| ChatContainer | ✅ | 已有 `.native.tsx`，并已接入主界面 WS 文本消息数据流 |
+| ChatContainer | ✅ | 已有 `.native.tsx`，并已接入主界面 WS 文本消息数据流（含移动端拍照、消息去重） |
 | Modal（Alert/Confirm/Prompt） | ✅ | 已有 `index.native.tsx`，保持 Promise API 一致 |
 | StatusToast | ✅ | 已有 `.native.tsx`，使用 RN Animated 实现 |
 | Live2D 拖拽/缩放手势 | ⚠️ | 单指 SDK 交互 ✅；UI 手势映射到 `scale/position` ⏳ |
