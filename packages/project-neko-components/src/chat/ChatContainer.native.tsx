@@ -17,7 +17,7 @@
  * @see ChatContainer.tsx - Web 版本（HTML/CSS 实现）
  */
 
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -30,7 +30,9 @@ import {
   Alert,
   PermissionsAndroid,
   Platform,
+  Keyboard,
 } from 'react-native';
+import type { ScrollView as ScrollViewType } from 'react-native';
 import { useT, tOrDefault } from '../i18n';
 import { useChatState, useSendMessage } from './hooks';
 import type { ChatMessage, ExternalChatMessage, ChatContainerProps, ConnectionStatus } from './types';
@@ -105,6 +107,7 @@ export default function ChatContainer({
   connectionStatus = 'idle',
   disabled = false,
   statusText,
+  cameraEnabled = false, // 相机功能默认禁用，需要集成 react-native-image-picker 后启用
 }: ChatContainerProps = {}) {
   const t = useT();
 
@@ -128,6 +131,17 @@ export default function ChatContainer({
   // 输入框状态
   const [inputValue, setInputValue] = React.useState('');
 
+  // ScrollView ref 用于自动滚动
+  const scrollViewRef = useRef<ScrollViewType>(null);
+
+  // 滚动到底部
+  const scrollToBottom = React.useCallback((animated = true) => {
+    // 延迟执行确保布局完成
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated });
+    }, 100);
+  }, []);
+
   // 计算实际显示的消息列表
   const displayMessages: ChatMessage[] = React.useMemo(() => {
     if (isControlled && externalMessages) {
@@ -135,6 +149,36 @@ export default function ChatContainer({
     }
     return internalMessages;
   }, [isControlled, externalMessages, internalMessages]);
+
+  // 消息列表变化时自动滚动到底部
+  useEffect(() => {
+    if (displayMessages.length > 0 && !collapsed) {
+      scrollToBottom();
+    }
+  }, [displayMessages.length, collapsed, scrollToBottom]);
+
+  // 展开面板时滚动到底部
+  useEffect(() => {
+    if (!collapsed) {
+      // 延迟稍长一点，确保 Modal 动画完成后再滚动
+      setTimeout(() => {
+        scrollToBottom(false);
+      }, 300);
+    }
+  }, [collapsed, scrollToBottom]);
+
+  // 键盘弹起时滚动到底部
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
+      if (!collapsed) {
+        scrollToBottom();
+      }
+    });
+
+    return () => {
+      keyboardDidShowListener.remove();
+    };
+  }, [collapsed, scrollToBottom]);
 
   // 初始化欢迎消息（仅非受控模式）
   React.useEffect(() => {
@@ -193,6 +237,21 @@ export default function ChatContainer({
   const handleTakePhoto = async () => {
     if (disabled) return;
 
+    // 相机功能未启用时，显示提示并返回（不请求权限）
+    if (!cameraEnabled) {
+      Alert.alert(
+        tOrDefault(t, 'chat.camera.title', '相机功能'),
+        tOrDefault(
+          t,
+          'chat.camera.not_implemented',
+          '相机功能需要安装 react-native-image-picker 或 expo-image-picker。\n\n请参考文档进行集成。'
+        ),
+        [{ text: tOrDefault(t, 'chat.camera.ok', '确定') }]
+      );
+      return;
+    }
+
+    // 检查截图数量限制
     if (pendingScreenshots.length >= MAX_SCREENSHOTS) {
       Alert.alert(
         tOrDefault(t, 'chat.screenshot.title', '拍照'),
@@ -201,7 +260,7 @@ export default function ChatContainer({
       return;
     }
 
-    // 检查相机权限（Android）
+    // 相机功能已启用，检查相机权限（Android）
     if (Platform.OS === 'android') {
       try {
         const granted = await PermissionsAndroid.request(
@@ -227,20 +286,16 @@ export default function ChatContainer({
       }
     }
 
-    // TODO: 集成 react-native-image-picker 或 expo-image-picker
-    // 目前显示提示信息
+    // TODO: 当 cameraEnabled 为 true 时，集成 react-native-image-picker 或 expo-image-picker
+    // 在集成后，移除此 Alert 并启用下方注释的代码
     Alert.alert(
       tOrDefault(t, 'chat.camera.title', '相机功能'),
       tOrDefault(
         t,
-        'chat.camera.not_implemented',
-        '相机功能需要安装 react-native-image-picker 或 expo-image-picker。\n\n请参考文档进行集成。'
+        'chat.camera.integration_pending',
+        '相机权限已获取，但拍照功能尚未完全集成。\n\n请参考 react-native-image-picker 文档完成集成。'
       ),
-      [
-        {
-          text: tOrDefault(t, 'chat.camera.ok', '确定'),
-        },
-      ]
+      [{ text: tOrDefault(t, 'chat.camera.ok', '确定') }]
     );
 
     /*
@@ -364,8 +419,15 @@ export default function ChatContainer({
 
               {/* 消息列表 */}
               <ScrollView
+                ref={scrollViewRef}
                 style={styles.messageList}
                 contentContainerStyle={styles.messageListContent}
+                showsVerticalScrollIndicator={true}
+                keyboardShouldPersistTaps="handled"
+                onContentSizeChange={() => {
+                  // 内容变化时滚动到底部
+                  scrollToBottom();
+                }}
               >
                 {displayMessages.map(renderMessage)}
               </ScrollView>
@@ -457,8 +519,8 @@ export default function ChatContainer({
                     </Text>
                   </TouchableOpacity>
 
-                  {/* 拍照按钮 - 支持 onSendMessage 的受控模式或非受控模式 */}
-                  {(onSendMessage || !sendHandler) && (
+                  {/* 拍照按钮 - 仅在 cameraEnabled 且支持 onSendMessage 的受控模式或非受控模式下显示 */}
+                  {cameraEnabled && (onSendMessage || !sendHandler) && (
                     <TouchableOpacity
                       style={[
                         styles.screenshotButton,

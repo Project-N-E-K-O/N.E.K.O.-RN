@@ -180,6 +180,16 @@ export const useChatMessages = (config: UseChatMessagesConfig = {}) => {
           return { type: 'user_activity' };
         } 
         
+        else if (parsed.type === 'user_transcript') {
+          // 用户语音输入的转录文本
+          const text = parsed.text || '';
+          console.log(`👤 用户语音转录: "${text.substring(0, 50)}"`);
+          if (text.trim()) {
+            addMessage(text, 'user');
+          }
+          return { type: 'user_transcript', text };
+        } 
+        
         else if (parsed.type === 'status') {
           console.log('ℹ️ 状态消息:', parsed.message || parsed.data);
           addMessage(parsed.message || JSON.stringify(parsed.data), 'system');

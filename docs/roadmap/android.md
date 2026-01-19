@@ -13,7 +13,7 @@
 - **UI 现状**：
   - `Live2DRightToolbar`：已有 RN 版本（`.native.tsx`），Android 可用。
   - `ChatContainer`：✅ **已完成 WS 集成**（2026-01-18），支持文本消息流式显示、截图/拍照发送、连接状态指示。
-  - `Modal` / `StatusToast`：当前实现依赖 `react-dom`（Web-only），Android 需要补齐 `.native.tsx` 或 RN 入口避免导出。
+  - `Modal` / `StatusToast`：当前实现依赖 `react-dom`（Web-only），Android 需要补齐 `.native.tsx` 原生实现，并确保 RN 入口（`index.native.ts`）仅导出该原生版本，避免导出依赖 `react-dom` 的 Web 版本。
 
 ---
 
@@ -24,7 +24,7 @@
 - **P0-1**：✅ 把主界面的 WS 文本消息接入 `ChatContainer.native.tsx` 的 UI 展示。
   - 方案：`ChatContainer` 支持受控 props（`externalMessages/onSendMessage/connectionStatus`）。
   - 验收：`gemini_response` 流式追加能在 UI 上逐字增长；`turn end` 后标记完成。
-  - **相关文档**：[Chat Text Conversation Feature Spec](../../N.E.K.O/docs/frontend/spec/chat-text-conversation.md)
+  - **相关文档**：[Chat Text Conversation Feature Spec](../../../N.E.K.O/docs/frontend/spec/chat-text-conversation.md)（位于 N.E.K.O 仓库）
 
 - **P0-2**：✅ 把"发送文本"打通到后端（与 Web 侧流程对齐）。
   - 验收：用户输入能触发后端回复（走 WS `stream_data` action）。
@@ -32,7 +32,7 @@
     - 移动端拍照支持（`getUserMedia` + 优先后置摄像头）
     - `clientMessageId` 消息去重机制
     - Ref 模式防止 WebSocket 重连
-  - **相关文档**：[WebSocket 稳定性改进总结](../../N.E.K.O/docs/frontend/SUMMARY-websocket-stability-improvements-2026-01-18.md)
+  - **相关文档**：[WebSocket 稳定性改进总结](../../../N.E.K.O/docs/frontend/SUMMARY-websocket-stability-improvements-2026-01-18.md)（位于 N.E.K.O 仓库）
 
 ### P1：Toast/Modal 原生化（让 Android 交互体验可用且一致）
 

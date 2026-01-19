@@ -45,9 +45,45 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
     proactiveVision: false,
   });
 
-  // 消息去重：跟踪已发送消息的 clientMessageId
-  const sentClientMessageIds = useRef<Set<string>>(new Set());
+  // 消息去重：跟踪已发送消息的 clientMessageId（使用 Map 存储时间戳，支持 TTL 清理）
+  // 配置：TTL 5分钟，最大条目数 1000，清理间隔 1分钟
+  const DEDUPE_TTL_MS = 5 * 60 * 1000;
+  const DEDUPE_MAX_SIZE = 1000;
+  const DEDUPE_CLEANUP_INTERVAL_MS = 60 * 1000;
+  const sentClientMessageIds = useRef<Map<string, number>>(new Map());
   const messageCounterRef = useRef(0);
+
+  // 定期清理过期的去重条目，防止内存无限增长
+  useEffect(() => {
+    const cleanup = () => {
+      const now = Date.now();
+      const map = sentClientMessageIds.current;
+
+      // 删除超过 TTL 的条目
+      for (const [id, timestamp] of map) {
+        if (now - timestamp > DEDUPE_TTL_MS) {
+          map.delete(id);
+        }
+      }
+
+      // 如果仍超过最大数量，按时间戳淘汰最旧的条目
+      if (map.size > DEDUPE_MAX_SIZE) {
+        const entries = Array.from(map.entries()).sort((a, b) => a[1] - b[1]);
+        const toRemove = entries.slice(0, map.size - DEDUPE_MAX_SIZE);
+        for (const [id] of toRemove) {
+          map.delete(id);
+        }
+      }
+    };
+
+    const interval = setInterval(cleanup, DEDUPE_CLEANUP_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Text session 管理（与 Web 端一致）
+  const [isTextSessionActive, setIsTextSessionActive] = useState(false);
+  const sessionStartedResolverRef = useRef<((value: boolean) => void) | null>(null);
+  const sessionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Agent Backend 管理（传入 openPanel 以支持动态刷新）
   const { agent, onAgentChange, refreshAgentState } = useLive2DAgentBackend({
@@ -75,9 +111,10 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
       if (typeof event.data !== 'string') return;
 
       // 检查 clientMessageId 用于去重
+      let parsedMsg: any = null;
       try {
-        const msg = JSON.parse(event.data);
-        const clientMessageId = msg?.clientMessageId as string | undefined;
+        parsedMsg = JSON.parse(event.data);
+        const clientMessageId = parsedMsg?.clientMessageId as string | undefined;
         if (clientMessageId && sentClientMessageIds.current.has(clientMessageId)) {
           // 服务器回显，跳过处理
           sentClientMessageIds.current.delete(clientMessageId);
@@ -85,6 +122,33 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
         }
       } catch {
         // 非 JSON 消息，继续处理
+      }
+
+      // 处理 session_started 事件（text session 管理）
+      if (parsedMsg?.type === 'session_started') {
+        const inputMode = parsedMsg.input_mode as string | undefined;
+        console.log('✅ 收到 session_started，input_mode:', inputMode);
+        // 只有 text 会话才设置 isTextSessionActive
+        // audio 会话由 audio-service 管理，不影响 text session 状态
+        if (inputMode === 'text') {
+          setIsTextSessionActive(true);
+        }
+        if (sessionStartedResolverRef.current) {
+          sessionStartedResolverRef.current(true);
+          sessionStartedResolverRef.current = null;
+        }
+        return;
+      }
+
+      // 处理 session_failed 事件
+      if (parsedMsg?.type === 'session_failed') {
+        console.log('❌ 收到 session_failed，input_mode:', parsedMsg.input_mode);
+        setIsTextSessionActive(false);
+        if (sessionStartedResolverRef.current) {
+          sessionStartedResolverRef.current(false);
+          sessionStartedResolverRef.current = null;
+        }
+        return;
       }
 
       // 处理文本消息并通过 MainManager 协调
@@ -104,6 +168,8 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
         chat.addMessage('已连接到服务器', 'system');
       } else {
         chat.addMessage('与服务器断开连接', 'system');
+        // 连接断开时重置 text session 状态
+        setIsTextSessionActive(false);
       }
     }
   });
@@ -239,6 +305,9 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
       mainManager.startRecording();
     } else {
       mainManager.stopRecording();
+      // 语音会话停止后，重置 text session 状态
+      // 这样下次发送文本消息时会重新发送 start_session
+      setIsTextSessionActive(false);
     }
   }, [mainManager]);
 
@@ -252,6 +321,8 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
     if (toolbarMicEnabled) {
       mainManager.stopRecording();
       setToolbarMicEnabled(false);
+      // 语音会话停止后，重置 text session 状态
+      setIsTextSessionActive(false);
     }
     setToolbarGoodbyeMode(true);
     setToolbarOpenPanel(null);
@@ -266,11 +337,59 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
     Alert.alert('功能提示', `即将打开: ${id}`);
   }, []);
 
+  // 确保 text session 已启动（与 Web 端一致的 Legacy 协议）
+  const ensureTextSession = useCallback(async (): Promise<boolean> => {
+    // 如果已经有活跃的 text session，直接返回
+    if (isTextSessionActive) {
+      return true;
+    }
+
+    if (!audio.isConnected) {
+      return false;
+    }
+
+    return new Promise<boolean>((resolve) => {
+      // 清除任何现有的超时
+      if (sessionTimeoutRef.current) {
+        clearTimeout(sessionTimeoutRef.current);
+        sessionTimeoutRef.current = null;
+      }
+
+      // 设置 resolver
+      sessionStartedResolverRef.current = resolve;
+
+      // 发送 start_session（Legacy 协议）
+      console.log('📤 发送 start_session(input_type: text)');
+      audio.sendMessage({
+        action: 'start_session',
+        input_type: 'text',
+        new_session: false,
+      });
+
+      // 15 秒超时
+      sessionTimeoutRef.current = setTimeout(() => {
+        if (sessionStartedResolverRef.current === resolve) {
+          sessionStartedResolverRef.current = null;
+          console.log('⏰ start_session 超时');
+          resolve(false);
+        }
+        sessionTimeoutRef.current = null;
+      }, 15000);
+    });
+  }, [isTextSessionActive, audio.isConnected, audio.sendMessage]);
+
   // 处理用户发送消息（文本 + 可选图片）
   // 使用 stream_data action 和 clientMessageId 与 N.E.K.O 协议一致
-  const handleSendMessage = useCallback((text: string, images?: string[]) => {
+  const handleSendMessage = useCallback(async (text: string, images?: string[]) => {
     if (!audio.isConnected) {
       Alert.alert('提示', '未连接到服务器');
+      return;
+    }
+
+    // 确保 text session 已启动（与 Web 端一致）
+    const sessionOk = await ensureTextSession();
+    if (!sessionOk) {
+      Alert.alert('提示', '会话初始化失败，请重试');
       return;
     }
 
@@ -279,7 +398,7 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
       for (const imgBase64 of images) {
         messageCounterRef.current += 1;
         const clientMessageId = generateMessageId(messageCounterRef.current);
-        sentClientMessageIds.current.add(clientMessageId);
+        sentClientMessageIds.current.set(clientMessageId, Date.now());
 
         audio.sendMessage({
           action: 'stream_data',
@@ -295,7 +414,7 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
     if (text.trim()) {
       messageCounterRef.current += 1;
       const clientMessageId = generateMessageId(messageCounterRef.current);
-      sentClientMessageIds.current.add(clientMessageId);
+      sentClientMessageIds.current.set(clientMessageId, Date.now());
 
       // 添加用户消息到 UI
       chat.addMessage(text, 'user');
@@ -310,7 +429,7 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
 
       console.log('📤 发送文本消息:', text.substring(0, 50));
     }
-  }, [audio.isConnected, audio.sendMessage, chat.addMessage]);
+  }, [audio.isConnected, audio.sendMessage, chat.addMessage, ensureTextSession]);
 
   // 检测屏幕尺寸变化
   useEffect(() => {

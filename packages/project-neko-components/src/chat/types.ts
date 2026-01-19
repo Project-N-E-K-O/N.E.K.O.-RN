@@ -70,4 +70,11 @@ export interface ChatContainerProps {
    * 发送文本消息的回调（受控模式）
    */
   onSendText?: (text: string) => void;
+
+  /**
+   * 是否启用相机功能（仅 RN 平台）
+   * 设为 true 时才会请求相机权限并显示拍照按钮
+   * 默认为 false（相机功能需要集成 react-native-image-picker 或 expo-image-picker）
+   */
+  cameraEnabled?: boolean;
 }

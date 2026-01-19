@@ -110,6 +110,10 @@ export default function ChatContainer({
   // 使用 onSendMessage 或 deprecated 的 onSendText
   const sendHandler = onSendMessage || (onSendText ? (text: string) => onSendText(text) : undefined);
 
+  // Legacy mode: onSendText present AND onSendMessage absent
+  // 在此模式下，截图/拍照功能不可用（因为旧接口不支持图片）
+  const isLegacyMode = onSendText !== undefined && onSendMessage === undefined;
+
   /** 是否缩小 */
   const [collapsed, setCollapsed] = useState(false);
 
@@ -463,7 +467,8 @@ export default function ChatContainer({
 
       <ChatInput
         onSend={handleSendText}
-        onTakePhoto={handleScreenshot}
+        // Legacy mode (onSendText without onSendMessage): hide photo button since old interface drops images
+        onTakePhoto={isLegacyMode ? undefined : handleScreenshot}
         pendingScreenshots={pendingScreenshots}
         setPendingScreenshots={setPendingScreenshots}
         disabled={disabled}
