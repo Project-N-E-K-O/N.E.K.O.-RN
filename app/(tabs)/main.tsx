@@ -133,6 +133,10 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
         if (inputMode === 'text') {
           setIsTextSessionActive(true);
         }
+        if (sessionTimeoutRef.current) {
+          clearTimeout(sessionTimeoutRef.current);
+          sessionTimeoutRef.current = null;
+        }
         if (sessionStartedResolverRef.current) {
           sessionStartedResolverRef.current(true);
           sessionStartedResolverRef.current = null;
@@ -144,6 +148,10 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
       if (parsedMsg?.type === 'session_failed') {
         console.log('❌ 收到 session_failed，input_mode:', parsedMsg.input_mode);
         setIsTextSessionActive(false);
+        if (sessionTimeoutRef.current) {
+          clearTimeout(sessionTimeoutRef.current);
+          sessionTimeoutRef.current = null;
+        }
         if (sessionStartedResolverRef.current) {
           sessionStartedResolverRef.current(false);
           sessionStartedResolverRef.current = null;
