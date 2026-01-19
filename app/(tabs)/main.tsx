@@ -20,7 +20,7 @@ import {
   type ConnectionStatus,
 } from '@project_neko/components';
 
-interface MainUIScreenProps { }
+type MainUIScreenProps = {}
 
 // 生成消息 ID
 function generateMessageId(counter: number): string {
@@ -84,6 +84,7 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
   const [isTextSessionActive, setIsTextSessionActive] = useState(false);
   const sessionStartedResolverRef = useRef<((value: boolean) => void) | null>(null);
   const sessionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingSessionPromiseRef = useRef<Promise<boolean> | null>(null);
 
   // Agent Backend 管理（传入 openPanel 以支持动态刷新）
   const { agent, onAgentChange, refreshAgentState } = useLive2DAgentBackend({
@@ -141,6 +142,7 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
           sessionStartedResolverRef.current(true);
           sessionStartedResolverRef.current = null;
         }
+        pendingSessionPromiseRef.current = null;
         return;
       }
 
@@ -156,6 +158,7 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
           sessionStartedResolverRef.current(false);
           sessionStartedResolverRef.current = null;
         }
+        pendingSessionPromiseRef.current = null;
         return;
       }
 
@@ -356,7 +359,13 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
       return false;
     }
 
-    return new Promise<boolean>((resolve) => {
+    // 如果已经有一个正在进行的 session 请求，复用该 Promise
+    // 这样并发调用会共享同一个 Promise，避免 resolver 被覆盖导致早期 Promise 永不 resolve
+    if (pendingSessionPromiseRef.current) {
+      return pendingSessionPromiseRef.current;
+    }
+
+    const promise = new Promise<boolean>((resolve) => {
       // 清除任何现有的超时
       if (sessionTimeoutRef.current) {
         clearTimeout(sessionTimeoutRef.current);
@@ -378,12 +387,16 @@ const MainUIScreen: React.FC<MainUIScreenProps> = () => {
       sessionTimeoutRef.current = setTimeout(() => {
         if (sessionStartedResolverRef.current === resolve) {
           sessionStartedResolverRef.current = null;
+          pendingSessionPromiseRef.current = null;
           console.log('⏰ start_session 超时');
           resolve(false);
         }
         sessionTimeoutRef.current = null;
       }, 15000);
     });
+
+    pendingSessionPromiseRef.current = promise;
+    return promise;
   }, [isTextSessionActive, audio.isConnected, audio.sendMessage]);
 
   // 处理用户发送消息（文本 + 可选图片）
